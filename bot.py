@@ -16,7 +16,7 @@ def show_orders(message):
     pass
 
 
-@bot.message_handler(commands=['new_orders'])
+@bot.message_handler(commands=['new_order'])
 def show_orders(message):
     """Создаем новый заказ"""
     pass
@@ -25,7 +25,9 @@ def show_orders(message):
 @bot.message_handler(commands=['my_orders'])
 def show_orders(message):
     """Выводим список заказов"""
-    pass
+    bot.reply_to(message,
+                 messages.MY_ORDERS,
+                 reply_markup=markups.my_orders)
 
 
 @bot.message_handler(commands=['register'])
@@ -44,15 +46,21 @@ def send_welcome(message):
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'roll_client')
-def register_client(message):
+def register_client(call):
     """Регистрируем клиента в базе"""
-    pass
+    bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'roll_freelancer')
-def register_client(message):
+def register_client(call):
     """Регистрируем заказчика в базе"""
-    pass
+    bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
+
+
+@bot.callback_query_handler(func=lambda call: 'order_' in call.data)
+def register_client(call):
+    """Отображаем информацию по заказу"""
+    bot.answer_callback_query(call.id, text='ваш заказ')
 
 
 if __name__ == '__main__':
