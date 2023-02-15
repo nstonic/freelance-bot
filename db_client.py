@@ -36,6 +36,16 @@ def find_orders(chat_id: int) -> list:
     pass
 
 
+def show_order(order_id: int) -> dict:
+    """Возвращает информацию по конкретному заказу"""
+    pass
+
+
 def show_tickets(chat_id: int) -> list:
     """Возвращает список всех незакрытых тикетов заказчика"""
+    pass
+
+
+def show_ticket(ticket_id: int) -> dict:
+    """Возвращает информацию по конкретному тикету"""
     pass
