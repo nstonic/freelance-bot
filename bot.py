@@ -51,12 +51,19 @@ def register(message: telebot.types.Message):
                      reply_markup=markups.choose_roll)
 
 
-@bot.message_handler(commands=['start', 'help'])
+@bot.message_handler(commands=['help'])
+def send_help(message: telebot.types.Message):
+    """Выводим приветствие и список возможны запросов"""
+    bot.delete_message(chat_id=message.chat.id, message_id=message.id)
+    bot.send_message(message.chat.id, messages.HELP)
+
+
+@bot.message_handler(commands=['start'])
 def send_welcome(message: telebot.types.Message):
     """Выводим приветствие и список возможны запросов"""
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
     bot.send_message(message.chat.id,
-                     messages.HELP.format(message.chat.first_name))
+                     messages.START.format(message.chat.first_name))
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'roll_client')
