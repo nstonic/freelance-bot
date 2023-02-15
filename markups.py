@@ -5,7 +5,6 @@ register = types.InlineKeyboardMarkup(row_width=1)
 btn_register = types.InlineKeyboardButton(text="Зарегистрироваться", callback_data="register")
 register.add(btn_register)
 
-
 #  Регистрация нового пользователя
 choose_roll = types.InlineKeyboardMarkup(row_width=1)
 btn_client = types.InlineKeyboardButton(text="Заказчик", callback_data="roll_client")

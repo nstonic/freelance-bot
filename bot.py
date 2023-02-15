@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import db_client
 import markups
 import messages
-from ticket_creating import get_ticket
+import models
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['BOT_TOKEN'], parse_mode=None)
@@ -36,14 +36,15 @@ def register(call: telebot.types.CallbackQuery):
 def show_main_menu(message: telebot.types.Message):
     """Выводим основное меню"""
     user = db_client.who_is_it(message.from_user.id)
+    text = messages.HELLO.format(message.from_user.first_name)
     if user == 'client':
         bot.send_message(message.chat.id,
                          reply_markup=markups.client_menu,
-                         text=messages.HELLO.format(message.from_user.first_name))
+                         text=text)
     elif user == 'freelancer':
         bot.send_message(message.chat.id,
                          reply_markup=markups.freelancer_menu,
-                         text=messages.HELLO.format(message.from_user.first_name))
+                         text=text)
     else:
         start(message)
 
@@ -61,22 +62,48 @@ def find_orders(message: telebot.types.Message):
         start(message)
 
 
-@bot.message_handler(regexp='Создать тикетзаказ')
+@bot.message_handler(regexp='Создать тикет')
 def create_new_ticket(message: telebot.types.Message):
     """Создаем новый тикет"""
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
     user = db_client.who_is_it(message.from_user.id)
     if user == 'client':
-        bot.register_next_step_handler(message, get_ticket)
+        bot_message_id = bot.send_message(message.chat.id, text=messages.INPUT_TITLE).id
+        bot.register_next_step_handler(message,
+                                       get_title,
+                                       bot_message_id=bot_message_id)
     elif user == 'freelancer':
         bot.send_message(message.chat.id, text=messages.ONLY_CLIENT_CAN_CREATE_ORDER)
     else:
         start(message)
 
 
+def get_title(message: telebot.types.Message, bot_message_id: int):
+    """Получаем от клиента название тикета"""
+    ticket = dict(
+        title=message.text
+    )
+    bot.delete_message(chat_id=message.chat.id, message_id=bot_message_id)
+    bot.delete_message(chat_id=message.chat.id, message_id=message.id)
+    bot_message_id = bot.send_message(message.chat.id, text=messages.INPUT_TICKET_TEXT).id
+    bot.register_next_step_handler(message,
+                                   get_text,
+                                   ticket=ticket,
+                                   bot_message_id=bot_message_id)
+
+
+def get_text(message: telebot.types.Message, ticket: dict, bot_message_id: int):
+    """Получаем от клиента текст тикета"""
+    ticket['text'] = message.text
+    bot.delete_message(chat_id=message.chat.id, message_id=message.id)
+    bot.delete_message(chat_id=message.chat.id, message_id=bot_message_id)
+    bot.send_message(message.chat.id,
+                     text=messages.TICKET_CREATED.format(ticket['title'], ['text']))
+
+
 @bot.message_handler(regexp='Мои тикеты')
 def show_user_tickets(message: telebot.types.Message):
-    """Выводим список зтикетов клиента"""
+    """Выводим список тикетов клиента"""
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
     bot.send_message(message.chat.id,
                      messages.MY_TICKETS,
@@ -98,7 +125,7 @@ def register_client(call: telebot.types.CallbackQuery):
     if db_client.register_client(call.from_user.id):
         bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
     bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-    start(call.message)
+    show_main_menu(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'roll_freelancer')
@@ -107,7 +134,7 @@ def register_freelancer(call: telebot.types.CallbackQuery):
     if db_client.register_freelancer(call.from_user.id):
         bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
     bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-    start(call.message)
+    show_main_menu(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
@@ -125,4 +152,6 @@ def show_ticket_info(call: telebot.types.CallbackQuery):
 
 
 if __name__ == '__main__':
+    if not os.path.isfile(os.environ['DATABASE_PATH']):
+        models.create_tables()
     bot.infinity_polling()
