@@ -60,7 +60,7 @@ def register_freelancer(message: telebot.types.Message):
         bot.answer_callback_query(message.id, text=messages.REGISTER_OK)
 
 
-@bot.callback_query_handler(func=lambda call: True, regexp=r'order_\d+')
+@bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
 def show_order_info(message: telebot.types.Message):
     """Отображаем информацию по заказу"""
     bot.answer_callback_query(message.id, text='ваш заказ')
