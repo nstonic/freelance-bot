@@ -1,6 +1,6 @@
 from peewee import IntegrityError
 
-from models import Client, Freelancer
+from models import Client, Freelancer, Ticket, Order
 
 
 def who_is_it(telegram_id: int) -> str | None:
@@ -31,21 +31,21 @@ def register_freelancer(telegram_id: int) -> bool:
         return False
 
 
-def find_orders(chat_id: int) -> list:
+def find_orders(chat_id: int) -> list[Order]:
     """Возвращает список из 5 случайных открытых тикетов (это для фрилансера"""
     pass
 
 
-def show_order(order_id: int) -> dict:
+def show_order(order_id: int) -> Order:
     """Возвращает информацию по конкретному заказу"""
     pass
 
 
-def show_tickets(chat_id: int) -> list:
+def show_tickets(chat_id: int) -> list[[Ticket]]:
     """Возвращает список всех незакрытых тикетов заказчика"""
     pass
 
 
-def show_ticket(ticket_id: int) -> dict:
+def show_ticket(ticket_id: int) -> Ticket:
     """Возвращает информацию по конкретному тикету"""
     pass
