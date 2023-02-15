@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import db_client
 import markups
 import messages
+from ticket_creating import get_ticket
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['BOT_TOKEN'], parse_mode=None)
@@ -60,26 +61,35 @@ def find_orders(message: telebot.types.Message):
         start(message)
 
 
-@bot.message_handler(regexp='Создать заказ')
-def create_new_order(message: telebot.types.Message):
-    """Создаем новый заказ"""
+@bot.message_handler(regexp='Создать тикетзаказ')
+def create_new_ticket(message: telebot.types.Message):
+    """Создаем новый тикет"""
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
     user = db_client.who_is_it(message.from_user.id)
     if user == 'client':
-        pass
+        bot.register_next_step_handler(message, get_ticket)
     elif user == 'freelancer':
         bot.send_message(message.chat.id, text=messages.ONLY_CLIENT_CAN_CREATE_ORDER)
     else:
         start(message)
 
 
-@bot.message_handler(regexp='Мои заказы|Заказы в работе')
-def show_user_orders(message: telebot.types.Message):
+@bot.message_handler(regexp='Мои тикеты')
+def show_user_tickets(message: telebot.types.Message):
+    """Выводим список зтикетов клиента"""
+    bot.delete_message(chat_id=message.chat.id, message_id=message.id)
+    bot.send_message(message.chat.id,
+                     messages.MY_TICKETS,
+                     reply_markup=markups.my_tickets)
+
+
+@bot.message_handler(regexp='Заказы в работе')
+def show_user_tickets(message: telebot.types.Message):
     """Выводим список заказов клиента"""
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
     bot.send_message(message.chat.id,
                      messages.MY_ORDERS,
-                     reply_markup=markups.my_orders)
+                     reply_markup=markups.my_tickets)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'roll_client')
@@ -104,6 +114,13 @@ def register_freelancer(call: telebot.types.CallbackQuery):
 def show_order_info(call: telebot.types.CallbackQuery):
     """Отображаем информацию по заказу"""
     bot.answer_callback_query(call.id, text='ваш заказ')
+    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
+def show_ticket_info(call: telebot.types.CallbackQuery):
+    """Отображаем информацию по тикету"""
+    bot.answer_callback_query(call.id, text='ваш тикет')
     bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
 
 

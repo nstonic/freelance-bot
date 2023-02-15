@@ -5,4 +5,5 @@ ONLY_CLIENT_CAN_CREATE_ORDER = "Вы не можете создать новый
 ONLY_FREELANCER_CAN_SEARCH_FOR_ORDERS = "Вы не можете искать заказы. Зарегистрируйтесь как исполнитель.\n/register"
 START = "Здравствуй, {}!\n Для начала работы зарегистрируйся"
 MY_ORDERS = "Ваши текущие заказы:"
+MY_TICKETS = "Ваши текущие тикеты:"
 

@@ -1,7 +1,7 @@
 def who_is_it(telegram_id: int) -> str | None:
     """Определяет в какой таблице зарегистрирован пользователь.
     Возвращает соответственно 'client' или 'freelancer'. Если пользователь не найден, возвращает None"""
-    return None
+    return 'client'
 
 
 def register_client(telegram_id: int) -> bool:
