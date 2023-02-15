@@ -15,15 +15,12 @@ class BaseModel(Model):
 
 
 class Client(BaseModel):
-    telegram_id = CharField()
+    telegram_id = IntegerField(primary_key=True)
     registered_at = DateTimeField(default=datetime.datetime.now)
-
-    def __str__(self):
-        return f'id: {self.telegram_id}, registred: {self.registered_at}'
 
 
 class Freelancer(BaseModel):
-    telegram_id = CharField()
+    telegram_id = IntegerField(primary_key=True)
     access = BooleanField()
     registered_at = DateTimeField(default=datetime.datetime.now)
 
