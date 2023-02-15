@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 import db_client
 import markups
 import messages
+from ticket_creating import get_ticket
 
 load_dotenv()
 bot = telebot.TeleBot(os.environ['BOT_TOKEN'], parse_mode=None)
@@ -22,8 +23,18 @@ def start(message: telebot.types.Message):
         show_main_menu(message)
 
 
+@bot.callback_query_handler(func=lambda call: call.data == 'register')
+def register(call: telebot.types.CallbackQuery):
+    """Предлагаем зарегистрироваться в роли исполнителя или заказчика"""
+    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+    bot.send_message(call.message.chat.id,
+                     messages.REGISTER,
+                     reply_markup=markups.choose_roll)
+
+
 @bot.message_handler(commands=['menu'])
 def show_main_menu(message: telebot.types.Message):
+    """Выводим основное меню"""
     user = db_client.who_is_it(message.from_user.id)
     if user == 'client':
         bot.send_message(message.chat.id,
@@ -37,51 +48,48 @@ def show_main_menu(message: telebot.types.Message):
         start(message)
 
 
-@bot.message_handler(commands=['help'])
-def send_help(message: telebot.types.Message):
-    """Выводим список возможных запросов"""
-    bot.delete_message(chat_id=message.chat.id, message_id=message.id)
-    bot.send_message(message.chat.id, messages.HELP)
-
-
 @bot.message_handler(regexp='Найти заказ')
 def find_orders(message: telebot.types.Message):
     """Выводим список 5 случайных свободных заказов"""
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
-    match db_client.who_is_it(message.from_user.id):
-        case 'freelancer':
-            pass
-        case 'client' | None:
-            bot.send_message(message.chat.id, text=messages.ONLY_FREELANCER_CAN_SEARCH_FOR_ORDERS)
+    user = db_client.who_is_it(message.from_user.id)
+    if user == 'freelancer':
+        pass
+    elif user == 'client':
+        bot.send_message(message.chat.id, text=messages.ONLY_FREELANCER_CAN_SEARCH_FOR_ORDERS)
+    else:
+        start(message)
 
 
-@bot.message_handler(regexp='Создать заказ')
-def create_new_order(message: telebot.types.Message):
-    """Создаем новый заказ"""
+@bot.message_handler(regexp='Создать тикетзаказ')
+def create_new_ticket(message: telebot.types.Message):
+    """Создаем новый тикет"""
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
-    match db_client.who_is_it(message.from_user.id):
-        case 'client':
-            pass
-        case 'freelancer' | None:
-            bot.send_message(message.chat.id, text=messages.ONLY_CLIENT_CAN_CREATE_ORDER)
+    user = db_client.who_is_it(message.from_user.id)
+    if user == 'client':
+        bot.register_next_step_handler(message, get_ticket)
+    elif user == 'freelancer':
+        bot.send_message(message.chat.id, text=messages.ONLY_CLIENT_CAN_CREATE_ORDER)
+    else:
+        start(message)
 
 
-@bot.message_handler(regexp='Мои заказы|Заказы в работе')
-def show_user_orders(message: telebot.types.Message):
+@bot.message_handler(regexp='Мои тикеты')
+def show_user_tickets(message: telebot.types.Message):
+    """Выводим список зтикетов клиента"""
+    bot.delete_message(chat_id=message.chat.id, message_id=message.id)
+    bot.send_message(message.chat.id,
+                     messages.MY_TICKETS,
+                     reply_markup=markups.my_tickets)
+
+
+@bot.message_handler(regexp='Заказы в работе')
+def show_user_tickets(message: telebot.types.Message):
     """Выводим список заказов клиента"""
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
     bot.send_message(message.chat.id,
                      messages.MY_ORDERS,
-                     reply_markup=markups.my_orders)
-
-
-@bot.callback_query_handler(func=lambda call: call.data == 'register')
-def register(call: telebot.types.CallbackQuery):
-    """Предлагаем зарегистрироваться в роли исполнителя или заказчика"""
-    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-    bot.send_message(call.message.chat.id,
-                     messages.REGISTER,
-                     reply_markup=markups.choose_roll)
+                     reply_markup=markups.my_tickets)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'roll_client')
@@ -106,6 +114,13 @@ def register_freelancer(call: telebot.types.CallbackQuery):
 def show_order_info(call: telebot.types.CallbackQuery):
     """Отображаем информацию по заказу"""
     bot.answer_callback_query(call.id, text='ваш заказ')
+    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
+def show_ticket_info(call: telebot.types.CallbackQuery):
+    """Отображаем информацию по тикету"""
+    bot.answer_callback_query(call.id, text='ваш тикет')
     bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
 
 
