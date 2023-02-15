@@ -2,6 +2,7 @@ from peewee import IntegrityError
 
 from models import Client, Freelancer
 
+
 def who_is_it(telegram_id: int) -> str | None:
     """Определяет в какой таблице зарегистрирован пользователь.
     Возвращает соответственно 'client' или 'freelancer'. Если пользователь не найден, возвращает None"""
@@ -28,3 +29,13 @@ def register_freelancer(telegram_id: int) -> bool:
         return True
     except IntegrityError:
         return False
+
+
+def find_orders(chat_id: int) -> list:
+    """Возвращает список из 5 случайных открытых тикетов (это для фрилансера"""
+    pass
+
+
+def show_tickets(chat_id: int) -> list:
+    """Возвращает список всех незакрытых тикетов заказчика"""
+    pass
