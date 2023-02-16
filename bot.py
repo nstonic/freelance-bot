@@ -32,6 +32,24 @@ def register(call: telebot.types.CallbackQuery):
                      reply_markup=markups.choose_roll())
 
 
+@bot.callback_query_handler(func=lambda call: call.data == 'roll_client')
+def register_client(call: telebot.types.CallbackQuery):
+    """Регистрируем клиента в базе"""
+    if db_client.register_client(call.from_user.id):
+        bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
+    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+    show_main_menu(call.message)
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'roll_freelancer')
+def register_freelancer(call: telebot.types.CallbackQuery):
+    """Регистрируем заказчика в базе"""
+    if db_client.register_freelancer(call.from_user.id):
+        bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
+    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+    show_main_menu(call.message)
+
+
 @bot.message_handler(commands=['menu'])
 def show_main_menu(message: telebot.types.Message):
     """Выводим основное меню"""
@@ -102,7 +120,7 @@ def get_text(message: telebot.types.Message, ticket: dict, bot_message_id: int):
 
 
 @bot.message_handler(regexp='Мои тикеты')
-def show_user_tickets(message: telebot.types.Message):
+def show_client_tickets(message: telebot.types.Message):
     """Выводим список тикетов клиента"""
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
     bot.send_message(message.chat.id,
@@ -110,8 +128,15 @@ def show_user_tickets(message: telebot.types.Message):
                      reply_markup=markups.get_tickets_list())
 
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
+def show_ticket_info(call: telebot.types.CallbackQuery):
+    """Отображаем информацию по тикету"""
+    bot.answer_callback_query(call.id, text='ваш тикет')
+    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+
+
 @bot.message_handler(regexp='Заказы в работе')
-def show_user_tickets(message: telebot.types.Message):
+def show_freelancer_orders(message: telebot.types.Message):
     """Выводим список заказов фрилансера"""
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
     bot.send_message(message.chat.id,
@@ -119,35 +144,10 @@ def show_user_tickets(message: telebot.types.Message):
                      reply_markup=markups.get_orders_list())
 
 
-@bot.callback_query_handler(func=lambda call: call.data == 'roll_client')
-def register_client(call: telebot.types.CallbackQuery):
-    """Регистрируем клиента в базе"""
-    if db_client.register_client(call.from_user.id):
-        bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
-    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-    show_main_menu(call.message)
-
-
-@bot.callback_query_handler(func=lambda call: call.data == 'roll_freelancer')
-def register_freelancer(call: telebot.types.CallbackQuery):
-    """Регистрируем заказчика в базе"""
-    if db_client.register_freelancer(call.from_user.id):
-        bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
-    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-    show_main_menu(call.message)
-
-
 @bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
 def show_order_info(call: telebot.types.CallbackQuery):
     """Отображаем информацию по заказу"""
     bot.answer_callback_query(call.id, text='ваш заказ')
-    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
-def show_ticket_info(call: telebot.types.CallbackQuery):
-    """Отображаем информацию по тикету"""
-    bot.answer_callback_query(call.id, text='ваш тикет')
     bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
 
 
