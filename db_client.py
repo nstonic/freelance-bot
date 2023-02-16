@@ -31,12 +31,12 @@ def register_freelancer(telegram_id: int) -> bool:
         return False
 
 
-def create_ticket(chat_id: int) -> bool:
+def create_ticket() -> bool:
     """Создает в базе тикет и возвращает True. Я не знаю, что она должна принимать. Скажешь мне потом"""
     pass
 
 
-def find_orders(chat_id: int) -> list[Order]:
+def find_orders() -> list[Order]:
     """Возвращает список из 5 случайных открытых тикетов (это для фрилансера). Я не знаю, что она должна принимать. Скажешь мне потом"""
     pass
 
