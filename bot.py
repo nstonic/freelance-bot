@@ -1,4 +1,5 @@
 import os
+import time
 
 import telebot
 from dotenv import load_dotenv
@@ -15,10 +16,14 @@ bot = telebot.TeleBot(os.environ['BOT_TOKEN'], parse_mode=None)
 @bot.message_handler(commands=['start'])
 def start(message: telebot.types.Message):
     """Выводим приветствие и предложение зарегистрироваться"""
+    try:
+        bot.delete_message(chat_id=message.chat.id, message_id=message.id)
+    except telebot.apihelper.ApiTelegramException:
+        pass
     if not db_client.who_is_it(message.from_user.id):
         bot.send_message(message.chat.id,
                          messages.START.format(message.chat.first_name),
-                         reply_markup=markups.register())
+                         reply_markup=markups.get_start_buttons())
     else:
         show_main_menu(message)
 
@@ -30,6 +35,15 @@ def register(call: telebot.types.CallbackQuery):
     bot.send_message(call.message.chat.id,
                      messages.REGISTER,
                      reply_markup=markups.choose_roll())
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'help')
+def show_help(call: telebot.types.CallbackQuery):
+    """Показываем справку"""
+    bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
+    bot.send_message(call.message.chat.id,
+                     messages.HELP,
+                     reply_markup=markups.get_start_buttons())
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'roll_client')
@@ -53,7 +67,8 @@ def register_freelancer(call: telebot.types.CallbackQuery):
 @bot.message_handler(commands=['menu'])
 def show_main_menu(message: telebot.types.Message):
     """Выводим основное меню"""
-    user = db_client.who_is_it(message.from_user.id)
+
+    user = db_client.who_is_it(message.chat.id)
     text = messages.HELLO.format(message.from_user.first_name)
     if user == 'client':
         bot.send_message(message.chat.id,
@@ -63,8 +78,6 @@ def show_main_menu(message: telebot.types.Message):
         bot.send_message(message.chat.id,
                          reply_markup=markups.get_freelancer_menu(),
                          text=text)
-    else:
-        start(message)
 
 
 @bot.message_handler(regexp='Найти заказ')
