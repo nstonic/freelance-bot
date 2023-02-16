@@ -115,8 +115,20 @@ def get_text(message: telebot.types.Message, ticket: dict, bot_message_id: int):
     ticket['text'] = message.text
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
     bot.delete_message(chat_id=message.chat.id, message_id=bot_message_id)
+    bot_message_id = bot.send_message(message.chat.id, text=messages.INPUT_TICKET_RATE).id
+    bot.register_next_step_handler(message,
+                                   get_rate,
+                                   ticket=ticket,
+                                   bot_message_id=bot_message_id)
+
+
+def get_rate(message: telebot.types.Message, ticket: dict, bot_message_id: int):
+    """Получаем от клиента стоимость работ по тикету"""
+    ticket['rate'] = message.text
+    bot.delete_message(chat_id=message.chat.id, message_id=message.id)
+    bot.delete_message(chat_id=message.chat.id, message_id=bot_message_id)
     bot.send_message(message.chat.id,
-                     text=messages.TICKET_CREATED.format(ticket['title'], ['text']))
+                     text=messages.TICKET_CREATED.format(ticket['title'], ticket['text'], ticket['rate']))
 
 
 @bot.message_handler(regexp='Мои тикеты')
