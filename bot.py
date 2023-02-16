@@ -125,6 +125,17 @@ def get_text(message: telebot.types.Message, ticket: dict, bot_message_id: int):
     """Получаем от клиента текст тикета"""
     ticket['text'] = message.text
     delete_messages(chat_id=message.chat.id, mes_ids=[message.id, bot_message_id])
+    bot_message_id = bot.send_message(message.chat.id, text=messages.INPUT_ESTIMATE_TIME).id
+    bot.register_next_step_handler(message,
+                                   get_estimate_time,
+                                   ticket=ticket,
+                                   bot_message_id=bot_message_id)
+
+
+def get_estimate_time(message: telebot.types.Message, ticket: dict, bot_message_id: int):
+    """Получаем от клиента текст тикета"""
+    ticket['estimate_time'] = message.text
+    delete_messages(chat_id=message.chat.id, mes_ids=[message.id, bot_message_id])
     bot_message_id = bot.send_message(message.chat.id, text=messages.INPUT_TICKET_RATE).id
     bot.register_next_step_handler(message,
                                    get_rate,
@@ -137,7 +148,7 @@ def get_rate(message: telebot.types.Message, ticket: dict, bot_message_id: int):
     ticket['rate'] = message.text
     delete_messages(chat_id=message.chat.id, mes_ids=[message.id, bot_message_id])
     bot.send_message(message.chat.id,
-                     text=messages.TICKET_CREATED.format(ticket['title'], ticket['text'], ticket['rate']),
+                     text=messages.TICKET_CREATED.format(**ticket),
                      parse_mode='HTML')
     show_main_menu(message)
 
