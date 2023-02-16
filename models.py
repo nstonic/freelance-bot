@@ -32,7 +32,8 @@ class Subscription(BaseModel):
 
 
 class Ticket(BaseModel):
-    client = ForeignKeyField(Client, backref='tickets')  
+    client = ForeignKeyField(Client, backref='tickets')
+    title = CharField(max_length=100)
     text = TextField()
     rate = DecimalField()
 
