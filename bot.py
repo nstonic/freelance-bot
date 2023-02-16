@@ -154,10 +154,10 @@ def show_client_tickets(message: telebot.types.Message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
 def show_ticket_info(call: telebot.types.CallbackQuery):
     """Отображаем информацию по тикету"""
-    order = db_client.show_ticket(int(call.data.strip('ticket_')))
-    bot.answer_callback_query(call.id, text='ваш тикет')
+    ticket = db_client.show_ticket(int(call.data.strip('ticket_')))
+    bot.answer_callback_query(call.id, text='Ваш тикет')
     bot.send_message(chat_id=call.message.chat.id,
-                     text=messages.TICKET_INFO.format(**order),
+                     text=messages.TICKET_INFO.format(**ticket),
                      parse_mode='HTML')
     delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
 
@@ -174,7 +174,11 @@ def show_freelancer_orders(message: telebot.types.Message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
 def show_order_info(call: telebot.types.CallbackQuery):
     """Отображаем информацию по заказу"""
-    bot.answer_callback_query(call.id, text='ваш заказ')
+    order = db_client.show_order(int(call.data.strip('order_')))
+    bot.answer_callback_query(call.id, text='Ваш заказ')
+    bot.send_message(chat_id=call.message.chat.id,
+                     text=messages.ORDER_INFO.format(**order),
+                     parse_mode='HTML')
     delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
 
 
