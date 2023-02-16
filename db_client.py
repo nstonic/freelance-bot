@@ -1,4 +1,5 @@
 from peewee import IntegrityError
+from peewee import fn, JOIN
 
 from models import Client, Freelancer, Ticket, Order
 
@@ -25,20 +26,27 @@ def register_client(telegram_id: int) -> bool:
 def register_freelancer(telegram_id: int) -> bool:
     """Регистрирует пользователя в таблице Freelancer. Возвращает True после успешной регистрации"""
     try:
-        Freelancer.create(telegram_id=telegram_id)
+        Freelancer.create(telegram_id=telegram_id, access=True)
         return True
     except IntegrityError:
         return False
 
 
-def create_ticket() -> bool:
-    """Создает в базе тикет и возвращает True. Я не знаю, что она должна принимать. Скажешь мне потом"""
-    pass
+def create_ticket(telegram_id: int, title: str, text: str, rate: float) -> bool:
+    """Создает в базе тикет и возвращает True."""
+    client = Client.get(telegram_id=telegram_id)
+    Ticket.create(client=client, title=title, text=text, rate=rate)
+    return True
 
 
 def find_orders() -> list:
-    """Возвращает список из 5 случайных открытых тикетов (это для фрилансера). Я не знаю, что она должна принимать. Скажешь мне потом"""
-    pass
+    """Возвращает список из 5 случайных открытых тикетов (это для фрилансера)."""
+    free_random_tickets = Ticket.select() \
+        .join(Order, JOIN.LEFT_OUTER) \
+        .where((Order.status==None) | (Order.status=='cancelled')) \
+        .order_by(fn.Random()) \
+        .limit(5)
+    return list(free_random_tickets)
 
 
 def show_order(order_id: int) -> Order:
