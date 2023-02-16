@@ -1,19 +1,19 @@
 from telebot import types
 
 
-def register() -> types.InlineKeyboardMarkup:
-    """Кнопка с предложением зарегистрироваться"""
+def get_start_buttons() -> types.InlineKeyboardMarkup:
+    """Стартовое меню с хэлпом и регистрацией"""
     register_markup = types.InlineKeyboardMarkup(row_width=1)
     register_markup.add(types.InlineKeyboardButton(text="Зарегистрироваться", callback_data="register"))
+    register_markup.add(types.InlineKeyboardButton(text="Справка", callback_data="help"))
     return register_markup
 
 
 def choose_roll() -> types.InlineKeyboardMarkup:
     """Кнопки регистрации нового пользователя"""
     choose_roll_markup = types.InlineKeyboardMarkup(row_width=1)
-    btn_client = types.InlineKeyboardButton(text="Заказчик", callback_data="roll_client")
-    btn_freelancer = types.InlineKeyboardButton(text="Исполнитель", callback_data="roll_freelancer")
-    choose_roll_markup.add(btn_client, btn_freelancer)
+    choose_roll_markup.add(types.InlineKeyboardButton(text="Заказчик", callback_data="roll_client"))
+    choose_roll_markup.add(types.InlineKeyboardButton(text="Исполнитель", callback_data="roll_freelancer"))
     return choose_roll_markup
 
 
