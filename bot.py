@@ -158,7 +158,7 @@ def show_client_tickets(message: telebot.types.Message):
 def show_ticket_info(call: telebot.types.CallbackQuery):
     """Отображаем информацию по тикету"""
     ticket = db_client.show_ticket(int(call.data.strip('ticket_')))
-    bot.answer_callback_query(call.id, text='Ваш тикет')
+    bot.answer_callback_query(call.id, text='Информация по тикету')
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.TICKET_INFO.format(**ticket),
                      parse_mode='HTML')
