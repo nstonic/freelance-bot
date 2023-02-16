@@ -39,7 +39,7 @@ def create_ticket(telegram_id: int, title: str, text: str, rate: float) -> bool:
     return True
 
 
-def find_orders() -> list:
+def find_tickets() -> list:
     """Возвращает список из 5 случайных открытых тикетов (это для фрилансера)."""
     free_random_tickets = Ticket.select() \
         .join(Order, JOIN.LEFT_OUTER) \

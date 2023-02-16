@@ -85,7 +85,9 @@ def find_orders(message: telebot.types.Message):
     delete_messages(chat_id=message.chat.id, mes_ids=[message.id])
     user = db_client.who_is_it(message.from_user.id)
     if user == 'freelancer':
-        pass
+        tickets = db_client.find_tickets()
+        markup = markups.get_tickets_choose_btns(tickets)
+        bot.send_message(message.chat.id, text=messages.TICKET_CHOICE, reply_markup=markup)
     elif user == 'client':
         bot.send_message(message.chat.id, text=messages.SEARCHING_IS_NOT_ALLOWED)
     else:
@@ -125,17 +127,6 @@ def get_text(message: telebot.types.Message, ticket: dict, bot_message_id: int):
     """Получаем от клиента текст тикета"""
     ticket['text'] = message.text
     delete_messages(chat_id=message.chat.id, mes_ids=[message.id, bot_message_id])
-    bot_message_id = bot.send_message(message.chat.id, text=messages.INPUT_ESTIMATE_TIME).id
-    bot.register_next_step_handler(message,
-                                   get_estimate_time,
-                                   ticket=ticket,
-                                   bot_message_id=bot_message_id)
-
-
-def get_estimate_time(message: telebot.types.Message, ticket: dict, bot_message_id: int):
-    """Получаем от клиента текст тикета"""
-    ticket['estimate_time'] = message.text
-    delete_messages(chat_id=message.chat.id, mes_ids=[message.id, bot_message_id])
     bot_message_id = bot.send_message(message.chat.id, text=messages.INPUT_TICKET_RATE).id
     bot.register_next_step_handler(message,
                                    get_rate,
@@ -150,6 +141,7 @@ def get_rate(message: telebot.types.Message, ticket: dict, bot_message_id: int):
     bot.send_message(message.chat.id,
                      text=messages.TICKET_CREATED.format(**ticket),
                      parse_mode='HTML')
+    db_client.create_ticket(telegram_id=message.chat.id, **ticket)
     show_main_menu(message)
 
 

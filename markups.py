@@ -1,5 +1,7 @@
 from telebot import types
 
+import models
+
 
 def get_start_buttons() -> types.InlineKeyboardMarkup:
     """Стартовое меню с хэлпом и регистрацией"""
@@ -23,6 +25,15 @@ def get_orders_list() -> types.InlineKeyboardMarkup:
     for btn in range(5):  # Пока просто 5 кнопок
         my_orders_markup.add(types.InlineKeyboardButton(text=btn, callback_data=f"order_{btn}"))
     return my_orders_markup
+
+
+def get_tickets_choose_btns(tickets: list[models.Ticket]) -> types.InlineKeyboardMarkup:
+    """Создает кнопки для выбора тикета"""
+    tickets_choose_markup = types.InlineKeyboardMarkup(row_width=2)
+    for ticket in tickets:
+        tickets_choose_markup.add(types.InlineKeyboardButton(text=ticket.title,
+                                                             callback_data=f"ticket_{ticket.get_id()}"))
+    return tickets_choose_markup
 
 
 def get_tickets_list() -> types.InlineKeyboardMarkup:
