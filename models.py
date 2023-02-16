@@ -56,8 +56,3 @@ class Message(BaseModel):
 def create_tables():
     with db:
         db.create_tables([Client, Freelancer, Subscription, Ticket, Order, Message])
-
-
-if __name__ == '__main__':
-    create_tables()
-    print('Schema created')

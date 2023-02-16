@@ -3,7 +3,7 @@ from peewee import IntegrityError
 from models import Client, Freelancer, Ticket, Order
 
 
-def who_is_it(telegram_id: int) -> str | None:
+def who_is_it(telegram_id: int) -> str:
     """Определяет в какой таблице зарегистрирован пользователь.
     Возвращает соответственно 'client' или 'freelancer'. Если пользователь не найден, возвращает None"""
     if Client.get_or_none(telegram_id=telegram_id):
@@ -36,7 +36,7 @@ def create_ticket() -> bool:
     pass
 
 
-def find_orders() -> list[Order]:
+def find_orders() -> list:
     """Возвращает список из 5 случайных открытых тикетов (это для фрилансера). Я не знаю, что она должна принимать. Скажешь мне потом"""
     pass
 
@@ -46,7 +46,7 @@ def show_order(order_id: int) -> Order:
     pass
 
 
-def show_tickets(telegram_id: int) -> list[[Ticket]]:
+def show_tickets(telegram_id: int) -> list:
     """Возвращает список всех незакрытых тикетов заказчика."""
     pass
 
