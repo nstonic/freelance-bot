@@ -18,7 +18,7 @@ def start(message: telebot.types.Message):
     if not db_client.who_is_it(message.from_user.id):
         bot.send_message(message.chat.id,
                          messages.START.format(message.chat.first_name),
-                         reply_markup=markups.register)
+                         reply_markup=markups.register())
     else:
         show_main_menu(message)
 
@@ -29,7 +29,7 @@ def register(call: telebot.types.CallbackQuery):
     bot.delete_message(chat_id=call.message.chat.id, message_id=call.message.id)
     bot.send_message(call.message.chat.id,
                      messages.REGISTER,
-                     reply_markup=markups.choose_roll)
+                     reply_markup=markups.choose_roll())
 
 
 @bot.message_handler(commands=['menu'])
@@ -39,11 +39,11 @@ def show_main_menu(message: telebot.types.Message):
     text = messages.HELLO.format(message.from_user.first_name)
     if user == 'client':
         bot.send_message(message.chat.id,
-                         reply_markup=markups.client_menu,
+                         reply_markup=markups.get_client_menu(),
                          text=text)
     elif user == 'freelancer':
         bot.send_message(message.chat.id,
-                         reply_markup=markups.freelancer_menu,
+                         reply_markup=markups.get_freelancer_menu(),
                          text=text)
     else:
         start(message)
@@ -107,16 +107,16 @@ def show_user_tickets(message: telebot.types.Message):
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
     bot.send_message(message.chat.id,
                      messages.MY_TICKETS,
-                     reply_markup=markups.my_tickets)
+                     reply_markup=markups.get_tickets_list())
 
 
 @bot.message_handler(regexp='Заказы в работе')
 def show_user_tickets(message: telebot.types.Message):
-    """Выводим список заказов клиента"""
+    """Выводим список заказов фрилансера"""
     bot.delete_message(chat_id=message.chat.id, message_id=message.id)
     bot.send_message(message.chat.id,
                      messages.MY_ORDERS,
-                     reply_markup=markups.my_tickets)
+                     reply_markup=markups.get_orders_list())
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'roll_client')
