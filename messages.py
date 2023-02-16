@@ -20,7 +20,7 @@ TICKET_INFO = '<b>Название: </b>{title}\n' \
               '<b>Текст: </b>{text}\n' \
               '<b>Стоимость: </b>{rate}\n' \
               '<b>Статус: </b>{status}\n' \
-              '<b>Исполнитель: </b>{freelanser}\n' \
+              '<b>Исполнитель: </b>{freelancer}\n' \
               '<b>Планируемое время: </b>{estimate_time}\n' \
               '<b>Дата закрытия: </b>{completed_at}'
 
