@@ -37,14 +37,29 @@ def find_tickets() -> list:
     """Возвращает список из 5 случайных открытых тикетов (это для фрилансера)."""
     free_random_tickets = Ticket.select() \
         .join(Order, JOIN.LEFT_OUTER) \
-        .where((Order.status==None) | (Order.status=='cancelled')) \
+        .where((Order.status == None) | (Order.status == 'cancelled')) \
         .order_by(fn.Random()) \
         .limit(5)
     return list(free_random_tickets)
 
 
+def delete_ticket(ticket_id) -> bool:
+    """Удаляет тикет"""
+    pass
+
+
 def show_order(order_id: int) -> Order:
     """Возвращает информацию по конкретному заказу."""
+    pass
+
+
+def show_my_orders(telegram_id: int) -> list:
+    """Возвращает все не закрытые заказы фрилансера"""
+    pass
+
+
+def start_work() -> bool:
+    """Фрилансер берет в работу тикет"""
     pass
 
 
@@ -54,7 +69,7 @@ def show_tickets(telegram_id: int) -> list:
         .tickets \
         .select(Ticket, Order) \
         .join(Order, JOIN.LEFT_OUTER) \
-        .where((Order.status==None) | (Order.status!='complete'))
+        .where((Order.status == None) | (Order.status != 'complete'))
     return list(uncomplited_tickets)
 
 
@@ -72,20 +87,24 @@ def show_ticket(ticket_id: int) -> dict:
     }
     return serialized_ticket
 
+
 def get_ticket_status(ticket):
     if ticket.orders:
         return ticket.orders.order_by(Order.started_at.desc()).first().status
-    return 'free ticket'
+    return 'Ожидает исполнителя'
+
 
 def get_ticket_freelancer(ticket):
     if ticket.orders:
         return ticket.orders.order_by(Order.started_at.desc()).first().freelancer.telegram_id
     return None
 
+
 def get_ticket_estimate_time(ticket):
     if ticket.orders:
         return ticket.orders.order_by(Order.started_at.desc()).first().estimate_time
     return None
+
 
 def get_ticket_complited_at(ticket):
     if ticket.orders:
