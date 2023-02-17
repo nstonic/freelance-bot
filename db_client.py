@@ -61,4 +61,32 @@ def show_tickets(telegram_id: int) -> list:
 def show_ticket(ticket_id: int) -> dict:
     """Возвращает информацию по конкретному тикету."""
     ticket = Ticket.get(id=ticket_id)
-    pass
+    serialized_ticket = {
+        'title': ticket.title,
+        'created_at': ticket.created_at,
+        'status': get_ticket_status(ticket),
+        'freelancer': get_ticket_freelancer(ticket),
+        'estimate_time': get_ticket_estimate_time(ticket),
+        'completed_at': get_ticket_complited_at(ticket)
+    }
+    return serialized_ticket
+
+def get_ticket_status(ticket):
+    if ticket.orders:
+        return ticket.orders.order_by(Order.started_at.desc()).first().status
+    return 'free ticket'
+
+def get_ticket_freelancer(ticket):
+    if ticket.orders:
+        return ticket.orders.order_by(Order.started_at.desc()).first().freelancer.telegram_id
+    return None
+
+def get_ticket_estimate_time(ticket):
+    if ticket.orders:
+        return ticket.orders.order_by(Order.started_at.desc()).first().estimate_time
+    return None
+
+def get_ticket_complited_at(ticket):
+    if ticket.orders:
+        return ticket.orders.order_by(Order.started_at.desc()).first().completed_at
+    return None
