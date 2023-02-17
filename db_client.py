@@ -14,25 +14,19 @@ def who_is_it(telegram_id: int) -> str:
     return None
 
 
-def register_client(telegram_id: int) -> bool:
-    """Регистрирует пользователя в таблице Client. Возвращает True после успешной регистрации"""
+def register_user(telegram_id: int, role: str) -> bool:
+    """Регистрирует пользователя в таблице Client или Freelancer в зависимости от роли. Возвращает True после успешной регистрации"""
     try:
-        Client.create(telegram_id=telegram_id)
+        if role == 'client':
+            Client.create(telegram_id=telegram_id)
+        elif role == 'freelancer':
+            Freelancer.create(telegram_id=telegram_id, access=True)
         return True
     except IntegrityError:
         return False
 
 
-def register_freelancer(telegram_id: int) -> bool:
-    """Регистрирует пользователя в таблице Freelancer. Возвращает True после успешной регистрации"""
-    try:
-        Freelancer.create(telegram_id=telegram_id, access=True)
-        return True
-    except IntegrityError:
-        return False
-
-
-def create_ticket(telegram_id: int, title: str, text: str, rate: float) -> bool:
+def create_ticket(telegram_id: int, title: str, text: str, rate=5000.0) -> bool:
     """Создает в базе тикет и возвращает True."""
     client = Client.get(telegram_id=telegram_id)
     Ticket.create(client=client, title=title, text=text, rate=rate)
