@@ -5,9 +5,16 @@ import models
 
 def make_inline_markups_from_dict(buttons: dict) -> types.InlineKeyboardMarkup:
     """Создает InlineKeyboardMarkup из словаря 'текст_кнопки':'callback_data' """
-    markup = types.InlineKeyboardMarkup()
-    for button, callback in buttons.items():
-        markup.add(types.InlineKeyboardButton(text=button, callback_data=callback))
+    markup = types.InlineKeyboardMarkup(row_width=2)
+    markup.add(*[types.InlineKeyboardButton(text=button, callback_data=callback)
+                 for button, callback in buttons.items()])
+    return markup
+
+
+def make_menu_from_list(buttons: list) -> types.ReplyKeyboardMarkup:
+    """Создаёт меню из списка кнопок"""
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
+    markup.add(*[types.KeyboardButton(button) for button in buttons])
     return markup
 
 
@@ -34,21 +41,3 @@ def get_tickets_list() -> types.InlineKeyboardMarkup:
     for btn in range(5):
         my_tickets_markup.add(types.InlineKeyboardButton(text=btn, callback_data=f"ticket_{btn}"))
     return my_tickets_markup
-
-
-def get_client_menu() -> types.ReplyKeyboardMarkup:
-    """Меню клиента"""
-    client_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn_new_ticket = types.KeyboardButton("Создать тикет")
-    btn_my_tickets = types.KeyboardButton("Мои тикеты")
-    client_menu_markup.add(btn_my_tickets, btn_new_ticket)
-    return client_menu_markup
-
-
-def get_freelancer_menu() -> types.ReplyKeyboardMarkup:
-    """Меню фрилансера"""
-    freelancer_menu_markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    btn_find_order = types.KeyboardButton("Найти заказ")
-    btn_my_orders = types.KeyboardButton("Заказы в работе")
-    freelancer_menu_markup.add(btn_my_orders, btn_find_order)
-    return freelancer_menu_markup

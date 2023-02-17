@@ -72,9 +72,9 @@ def show_main_menu(message: telebot.types.Message):
     user_roll = db_client.who_is_it(message.chat.id)
     text = messages.LETS_WORK.format(message.from_user.first_name)
     if user_roll == 'client':
-        markup = markups.get_client_menu()
+        markup = markups.make_menu_from_list(['Создать тикет', 'Мои тикеты'])
     elif user_roll == 'freelancer':
-        markup = markups.get_freelancer_menu()
+        markup = markups.make_menu_from_list(['Найти заказ', 'Заказы в работе'])
     else:
         text = messages.MENU_IS_NOT_ALLOWED
         markup = None
