@@ -50,9 +50,15 @@ def show_order(order_id: int) -> Order:
 
 def show_tickets(telegram_id: int) -> list:
     """Возвращает список всех незакрытых тикетов заказчика."""
-    pass
+    uncomplited_tickets = Client.get(telegram_id=telegram_id) \
+        .tickets \
+        .select(Ticket, Order) \
+        .join(Order, JOIN.LEFT_OUTER) \
+        .where((Order.status==None) | (Order.status!='complete'))
+    return list(uncomplited_tickets)
 
 
-def show_ticket(ticket_id: int) -> Ticket:
+def show_ticket(ticket_id: int) -> dict:
     """Возвращает информацию по конкретному тикету."""
+    ticket = Ticket.get(id=ticket_id)
     pass
