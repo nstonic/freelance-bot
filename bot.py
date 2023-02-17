@@ -41,10 +41,11 @@ def show_main_menu(message: telebot.types.Message):
     """Выводим основное меню"""
 
     user_role = db_client.who_is_it(message.chat.id)
-    text = messages.LETS_WORK.format(message.from_user.first_name)
     if user_role == 'client':
+        text = 'Меню заказчика'
         markup = markups.make_menu_from_list(['Создать тикет', 'Мои тикеты'])
     elif user_role == 'freelancer':
+        text = 'Меню исполнителя'
         markup = markups.make_menu_from_list(['Найти заказ', 'Заказы в работе'])
     else:
         text = messages.MENU_IS_NOT_ALLOWED
@@ -194,13 +195,15 @@ def show_ticket_info(call: telebot.types.CallbackQuery):
     ticket_markup = None
 
     user_role = db_client.who_is_it(call.message.chat.id)
-    if user_role == 'client' and ticket['status'] != 'Ожидает исполнителя':
-        ticket_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_freelancer'})
+    if user_role == 'client' and ticket['status'] != messages.TICKET_INFO['waiting']:
+        ticket_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_freelancer',
+                                                               'Читать переписку': 'show_chat'})
     if user_role == 'freelancer':
-        if ticket['status'] == 'Ожидает исполнителя':
+        if ticket['status'] == messages.TICKET_INFO['waiting']:
             ticket_markup = markups.make_inline_markups_from_dict({'Взять в работу': 'take_ticket'})
-        elif ticket['status'] != 'Ожидает исполнителя':
-            ticket_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_client'})
+        elif ticket['status'] != messages.TICKET_INFO['waiting']:
+            ticket_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_client',
+                                                                   'Читать переписку': 'show_chat'})
 
     bot.answer_callback_query(call.id, text='Информация по тикету')
     bot.send_message(chat_id=call.message.chat.id,
@@ -224,6 +227,7 @@ def show_order_info(call: telebot.types.CallbackQuery):
         'estimate_time': '17.02.24'
     }
     order_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_client',
+                                                          'Читать переписку': 'show_chat',
                                                           'Изменить статус': 'change_status'})
     bot.answer_callback_query(call.id, text='Ваш заказ')
     bot.send_message(chat_id=call.message.chat.id,
