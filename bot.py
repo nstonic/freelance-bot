@@ -168,6 +168,15 @@ def show_client_tickets(message: telebot.types.Message):
                      reply_markup=markups.get_tickets_list())
 
 
+@bot.message_handler(regexp='Заказы в работе')
+def show_freelancer_orders(message: telebot.types.Message):
+    """Выводим список заказов фрилансера"""
+    delete_messages(chat_id=message.chat.id, mes_ids=[message.id])
+    bot.send_message(message.chat.id,
+                     messages.MY_ORDERS,
+                     reply_markup=markups.get_orders_list())
+
+
 @bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
 def show_ticket_info(call: telebot.types.CallbackQuery):
     """Отображаем информацию по тикету"""
@@ -182,22 +191,23 @@ def show_ticket_info(call: telebot.types.CallbackQuery):
         'estimate_time': '17.02.24',
         'completed_at': 'н/а'
     }
-    send_mes_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_client'})
+    ticket_markup = None
+
+    user_role = db_client.who_is_it(call.message.chat.id)
+    if user_role == 'client' and ticket['status'] != 'Ожидает исполнителя':
+        ticket_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_freelancer'})
+    if user_role == 'freelancer':
+        if ticket['status'] == 'Ожидает исполнителя':
+            ticket_markup = markups.make_inline_markups_from_dict({'Взять в работу': 'take_ticket'})
+        elif ticket['status'] != 'Ожидает исполнителя':
+            ticket_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_client'})
+
     bot.answer_callback_query(call.id, text='Информация по тикету')
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.TICKET_INFO.format(**ticket),
-                     reply_markup=send_mes_markup,
+                     reply_markup=ticket_markup,
                      parse_mode='HTML')
     delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
-
-
-@bot.message_handler(regexp='Заказы в работе')
-def show_freelancer_orders(message: telebot.types.Message):
-    """Выводим список заказов фрилансера"""
-    delete_messages(chat_id=message.chat.id, mes_ids=[message.id])
-    bot.send_message(message.chat.id,
-                     messages.MY_ORDERS,
-                     reply_markup=markups.get_orders_list())
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
@@ -213,13 +223,13 @@ def show_order_info(call: telebot.types.CallbackQuery):
         'client': 'Петя',
         'estimate_time': '17.02.24'
     }
-    send_mes_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_client',
-                                                             'Изменить статус': 'change_status'})
+    order_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_client',
+                                                          'Изменить статус': 'change_status'})
     bot.answer_callback_query(call.id, text='Ваш заказ')
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.ORDER_INFO.format(**order),
                      parse_mode='HTML',
-                     reply_markup=send_mes_markup)
+                     reply_markup=order_markup)
     delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
 
 
