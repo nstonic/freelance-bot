@@ -24,6 +24,11 @@ TICKET_INFO = '<b>{title}</b>\n\n' \
               '<b>Исполнитель: </b>{freelancer}\n' \
               '<b>Планируемое время: </b>{estimate_time}\n' \
               '<b>Дата закрытия: </b>{completed_at}'
+TICKET_STATUSES = {'waiting': 'Ожидает исполнителя',
+                   'in_progress': 'В работе',
+                   'time_is_up': 'В работе (просрочен)',
+                   'paused': 'Работа приостановлена',
+                   'finished': 'Завершён'}
 
 # Создание тикета
 INPUT_TITLE = 'Давайте придумаем название для тикета'
