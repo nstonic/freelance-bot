@@ -3,6 +3,14 @@ from telebot import types
 import models
 
 
+def make_inline_markups_from_dict(buttons: dict) -> types.InlineKeyboardMarkup:
+    """Создает InlineKeyboardMarkup из словаря 'текст_кнопки':'callback' """
+    markup = types.InlineKeyboardMarkup()
+    for button, callback in buttons:
+        markup.add(types.InlineKeyboardButton(text=button, callback_data=callback))
+    return markup
+
+
 def get_start_buttons() -> types.InlineKeyboardMarkup:
     """Стартовое меню с хэлпом и регистрацией"""
     register_markup = types.InlineKeyboardMarkup(row_width=1)
