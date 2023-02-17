@@ -101,7 +101,7 @@ def find_orders(message: telebot.types.Message):
     user = db_client.who_is_it(message.from_user.id)
     if user == 'freelancer':
         tickets = db_client.find_tickets()
-        markup = markups.get_tickets_choose_btns(tickets)
+        markup = markups.get_tickets_list(tickets)
         bot.send_message(message.chat.id, text=messages.TICKET_CHOICE, reply_markup=markup)
     elif user == 'client':
         bot.send_message(message.chat.id, text=messages.SEARCHING_IS_NOT_ALLOWED)
@@ -174,9 +174,10 @@ def get_rate(message: telebot.types.Message, ticket: dict, bot_message_id: int):
 def show_client_tickets(message: telebot.types.Message):
     """Выводим список тикетов клиента"""
     delete_messages(chat_id=message.chat.id, mes_ids=[message.id])
+    tickets = db_client.find_tickets()
     bot.send_message(message.chat.id,
                      messages.MY_TICKETS,
-                     reply_markup=markups.get_tickets_list())
+                     reply_markup=markups.get_tickets_list(tickets))
 
 
 @bot.message_handler(regexp='Заказы в работе')
