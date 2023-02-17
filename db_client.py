@@ -64,6 +64,7 @@ def show_ticket(ticket_id: int) -> dict:
     serialized_ticket = {
         'title': ticket.title,
         'created_at': ticket.created_at,
+        'text': ticket.text,
         'status': get_ticket_status(ticket),
         'freelancer': get_ticket_freelancer(ticket),
         'estimate_time': get_ticket_estimate_time(ticket),
