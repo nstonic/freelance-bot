@@ -14,25 +14,19 @@ def who_is_it(telegram_id: int) -> str:
     return None
 
 
-def register_client(telegram_id: int) -> bool:
-    """Регистрирует пользователя в таблице Client. Возвращает True после успешной регистрации"""
+def register_user(telegram_id: int, role: str) -> bool:
+    """Регистрирует пользователя в таблице Client или Freelancer в зависимости от роли. Возвращает True после успешной регистрации"""
     try:
-        Client.create(telegram_id=telegram_id)
+        if role == 'client':
+            Client.create(telegram_id=telegram_id)
+        elif role == 'freelancer':
+            Freelancer.create(telegram_id=telegram_id, access=True)
         return True
     except IntegrityError:
         return False
 
 
-def register_freelancer(telegram_id: int) -> bool:
-    """Регистрирует пользователя в таблице Freelancer. Возвращает True после успешной регистрации"""
-    try:
-        Freelancer.create(telegram_id=telegram_id, access=True)
-        return True
-    except IntegrityError:
-        return False
-
-
-def create_ticket(telegram_id: int, title: str, text: str, rate: float) -> bool:
+def create_ticket(telegram_id: int, title: str, text: str, rate=5000.0) -> bool:
     """Создает в базе тикет и возвращает True."""
     client = Client.get(telegram_id=telegram_id)
     Ticket.create(client=client, title=title, text=text, rate=rate)
@@ -56,9 +50,43 @@ def show_order(order_id: int) -> Order:
 
 def show_tickets(telegram_id: int) -> list:
     """Возвращает список всех незакрытых тикетов заказчика."""
-    pass
+    uncomplited_tickets = Client.get(telegram_id=telegram_id) \
+        .tickets \
+        .select(Ticket, Order) \
+        .join(Order, JOIN.LEFT_OUTER) \
+        .where((Order.status==None) | (Order.status!='complete'))
+    return list(uncomplited_tickets)
 
 
-def show_ticket(ticket_id: int) -> Ticket:
+def show_ticket(ticket_id: int) -> dict:
     """Возвращает информацию по конкретному тикету."""
-    pass
+    ticket = Ticket.get(id=ticket_id)
+    serialized_ticket = {
+        'title': ticket.title,
+        'created_at': ticket.created_at,
+        'status': get_ticket_status(ticket),
+        'freelancer': get_ticket_freelancer(ticket),
+        'estimate_time': get_ticket_estimate_time(ticket),
+        'completed_at': get_ticket_complited_at(ticket)
+    }
+    return serialized_ticket
+
+def get_ticket_status(ticket):
+    if ticket.orders:
+        return ticket.orders.order_by(Order.started_at.desc()).first().status
+    return 'free ticket'
+
+def get_ticket_freelancer(ticket):
+    if ticket.orders:
+        return ticket.orders.order_by(Order.started_at.desc()).first().freelancer.telegram_id
+    return None
+
+def get_ticket_estimate_time(ticket):
+    if ticket.orders:
+        return ticket.orders.order_by(Order.started_at.desc()).first().estimate_time
+    return None
+
+def get_ticket_complited_at(ticket):
+    if ticket.orders:
+        return ticket.orders.order_by(Order.started_at.desc()).first().completed_at
+    return None
