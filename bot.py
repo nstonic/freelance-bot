@@ -151,7 +151,17 @@ def get_text(message: telebot.types.Message, ticket: dict, bot_message_id: int):
 
 def get_rate(message: telebot.types.Message, ticket: dict, bot_message_id: int):
     """Получаем от клиента стоимость работ по тикету"""
-    ticket['rate'] = message.text  # Добавить верификацию
+    try:
+        ticket['rate'] = int(message.text)
+    except ValueError:
+        delete_messages(chat_id=message.chat.id, mes_ids=[message.id, bot_message_id])
+        bot_message_id = bot.send_message(message.chat.id, text=messages.RATE_ERROR).id
+        bot.register_next_step_handler(message,
+                                       get_rate,
+                                       ticket=ticket,
+                                       bot_message_id=bot_message_id)
+        return
+
     delete_messages(chat_id=message.chat.id, mes_ids=[message.id, bot_message_id])
     bot.send_message(message.chat.id,
                      text=messages.TICKET_CREATED.format(**ticket),
