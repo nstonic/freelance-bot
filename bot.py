@@ -17,7 +17,7 @@ def start(message: telebot.types.Message):
     """Выводим приветствие и предложение зарегистрироваться"""
     delete_messages(chat_id=message.chat.id, mes_ids=[message.id])
     if not db_client.who_is_it(message.from_user.id):
-        start_markup = markups.make_inline_markups_from_dict({'Зарегистрироваться': 'register',
+        start_markup = markups.make_inline_markups_from_dict({'Зарегистрироваться': 'choose_role',
                                                               'Справка': 'help'})
         bot.send_message(message.chat.id,
                          messages.START.format(message.chat.first_name),
@@ -26,54 +26,25 @@ def start(message: telebot.types.Message):
         show_main_menu(message)
 
 
-@bot.callback_query_handler(func=lambda call: call.data == 'register')
-def register(call: telebot.types.CallbackQuery):
-    """Предлагаем зарегистрироваться в роли исполнителя или заказчика"""
-    delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
-    register_markup = markups.make_inline_markups_from_dict({'Заказчик': 'roll_client',
-                                                             'Исполнитель': 'roll_freelancer'})
-    bot.send_message(call.message.chat.id,
-                     messages.CHOOSE_ROLL,
-                     reply_markup=register_markup)
-
-
 @bot.callback_query_handler(func=lambda call: call.data == 'help')
 def show_help(call: telebot.types.CallbackQuery):
     """Показываем справку"""
     delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
-    help_markup = markups.make_inline_markups_from_dict({'Зарегистрироваться': 'register'})
+    help_markup = markups.make_inline_markups_from_dict({'Зарегистрироваться': 'choose_role'})
     bot.send_message(call.message.chat.id,
                      messages.HELP,
                      reply_markup=help_markup)
-
-
-@bot.callback_query_handler(func=lambda call: call.data == 'roll_client')
-def register_client(call: telebot.types.CallbackQuery):
-    """Регистрируем клиента в базе"""
-    if db_client.register_client(call.from_user.id):
-        bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
-    delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
-    show_main_menu(call.message)
-
-
-@bot.callback_query_handler(func=lambda call: call.data == 'roll_freelancer')
-def register_freelancer(call: telebot.types.CallbackQuery):
-    """Регистрируем заказчика в базе"""
-    if db_client.register_freelancer(call.from_user.id):
-        bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
-    delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
-    show_main_menu(call.message)
 
 
 @bot.message_handler(commands=['menu'])
 def show_main_menu(message: telebot.types.Message):
     """Выводим основное меню"""
 
-    user_roll = db_client.who_is_it(message.chat.id)
+    user_role = db_client.who_is_it(message.chat.id)
     text = messages.LETS_WORK.format(message.from_user.first_name)
-    if user_roll == 'client':
+    if user_role == 'client':
         markup = markups.make_menu_from_list(['Создать тикет', 'Мои тикеты'])
-    elif user_roll == 'freelancer':
+    elif user_role == 'freelancer':
         markup = markups.make_menu_from_list(['Найти заказ', 'Заказы в работе'])
     else:
         text = messages.MENU_IS_NOT_ALLOWED
@@ -82,6 +53,44 @@ def show_main_menu(message: telebot.types.Message):
                      reply_markup=markup,
                      text=text)
     delete_messages(chat_id=message.chat.id, mes_ids=[message.id])
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'choose_role')
+def choose_role(call: telebot.types.CallbackQuery):
+    """Предлагаем зарегистрироваться в роли исполнителя или заказчика"""
+    delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
+    register_markup = markups.make_inline_markups_from_dict({'Заказчик': 'register_client',
+                                                             'Исполнитель': 'register_freelancer'})
+    bot.send_message(call.message.chat.id,
+                     messages.CHOOSE_ROLE,
+                     reply_markup=register_markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data in ['register_client', 'register_freelancer'])
+def register_client(call: telebot.types.CallbackQuery):
+    """Регистрируем пользователя в базе"""
+
+    # if registered := db_client.register_user(call.from_user.id, role=call.data.strip(register_)):
+    #     bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
+    #     show_main_menu(call.message)
+    # else:
+    #     bot.answer_callback_query(call.id, text=messages.REGISTER_FALSE)
+    # delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
+
+    """Временное решение"""
+    registered = False
+
+    if call.data == 'register_client':
+        registered = db_client.register_client(call.from_user.id)
+    elif call.data == 'register_freelancer':
+        registered = db_client.register_freelancer(call.from_user.id)
+
+    if registered:
+        bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
+        show_main_menu(call.message)
+    else:
+        bot.answer_callback_query(call.id, text=messages.REGISTER_FALSE)
+    delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
 
 
 @bot.message_handler(regexp='Найти заказ')
@@ -141,7 +150,7 @@ def get_text(message: telebot.types.Message, ticket: dict, bot_message_id: int):
 
 def get_rate(message: telebot.types.Message, ticket: dict, bot_message_id: int):
     """Получаем от клиента стоимость работ по тикету"""
-    ticket['rate'] = message.text
+    ticket['rate'] = message.text  # Добавить верификацию
     delete_messages(chat_id=message.chat.id, mes_ids=[message.id, bot_message_id])
     bot.send_message(message.chat.id,
                      text=messages.TICKET_CREATED.format(**ticket),
@@ -162,10 +171,22 @@ def show_client_tickets(message: telebot.types.Message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
 def show_ticket_info(call: telebot.types.CallbackQuery):
     """Отображаем информацию по тикету"""
-    ticket = db_client.show_ticket(int(call.data.strip('ticket_')))
+    # ticket = db_client.show_ticket(int(call.data.strip('ticket_')))
+    ticket = {
+        'title': 'Построить дом',
+        'created_at': '17.02.23',
+        'text': 'Из кирпича',
+        'rate': 5000,
+        'status': 'В работе',
+        'freelancer': 'Вася',
+        'estimate_time': '17.02.24',
+        'completed_at': 'н/а'
+    }
+    send_mes_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_client'})
     bot.answer_callback_query(call.id, text='Информация по тикету')
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.TICKET_INFO.format(**ticket),
+                     reply_markup=send_mes_markup,
                      parse_mode='HTML')
     delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
 
@@ -182,11 +203,23 @@ def show_freelancer_orders(message: telebot.types.Message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
 def show_order_info(call: telebot.types.CallbackQuery):
     """Отображаем информацию по заказу"""
-    order = db_client.show_order(int(call.data.strip('order_')))
+    # order = db_client.show_order(int(call.data.strip('order_')))
+    order = {
+        'title': 'Построить дом',
+        'started_at': '17.02.23',
+        'text': 'Из кирпича',
+        'rate': 5000,
+        'status': 'В работе',
+        'client': 'Петя',
+        'estimate_time': '17.02.24'
+    }
+    send_mes_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_client',
+                                                             'Изменить статус': 'change_status'})
     bot.answer_callback_query(call.id, text='Ваш заказ')
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.ORDER_INFO.format(**order),
-                     parse_mode='HTML')
+                     parse_mode='HTML',
+                     reply_markup=send_mes_markup)
     delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
 
 
