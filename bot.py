@@ -17,9 +17,11 @@ def start(message: telebot.types.Message):
     """Выводим приветствие и предложение зарегистрироваться"""
     delete_messages(chat_id=message.chat.id, mes_ids=[message.id])
     if not db_client.who_is_it(message.from_user.id):
+        start_markup = markups.make_inline_markups_from_dict({'Зарегистрироваться': 'register',
+                                                              'Справка': 'help'})
         bot.send_message(message.chat.id,
                          messages.START.format(message.chat.first_name),
-                         reply_markup=markups.get_start_buttons())
+                         reply_markup=start_markup)
     else:
         show_main_menu(message)
 
@@ -28,18 +30,21 @@ def start(message: telebot.types.Message):
 def register(call: telebot.types.CallbackQuery):
     """Предлагаем зарегистрироваться в роли исполнителя или заказчика"""
     delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
+    register_markup = markups.make_inline_markups_from_dict({'Заказчик': 'roll_client',
+                                                             'Исполнитель': 'roll_freelancer'})
     bot.send_message(call.message.chat.id,
                      messages.CHOOSE_ROLL,
-                     reply_markup=markups.choose_roll())
+                     reply_markup=register_markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'help')
 def show_help(call: telebot.types.CallbackQuery):
     """Показываем справку"""
     delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
+    help_markup = markups.make_inline_markups_from_dict({'Зарегистрироваться': 'register'})
     bot.send_message(call.message.chat.id,
                      messages.HELP,
-                     reply_markup=markups.get_start_buttons())
+                     reply_markup=help_markup)
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'roll_client')
