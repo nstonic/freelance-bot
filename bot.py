@@ -70,7 +70,14 @@ def register(call: telebot.types.CallbackQuery):
 def register_client(call: telebot.types.CallbackQuery):
     """Регистрируем пользователя в базе"""
 
-    # if registered = db_client.register_user(call.from_user.id, roll=call.data.strip(register_)):
+    # if registered := db_client.register_user(call.from_user.id, roll=call.data.strip(register_)):
+    #     bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
+    #     show_main_menu(call.message)
+    # else:
+    #     bot.answer_callback_query(call.id, text=messages.REGISTER_FALSE)
+    # delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
+
+    """Временное решение"""
     registered = False
 
     if call.data == 'register_client':
