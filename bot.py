@@ -26,17 +26,6 @@ def start(message: telebot.types.Message):
         show_main_menu(message)
 
 
-@bot.callback_query_handler(func=lambda call: call.data == 'register')
-def register(call: telebot.types.CallbackQuery):
-    """Предлагаем зарегистрироваться в роли исполнителя или заказчика"""
-    delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
-    register_markup = markups.make_inline_markups_from_dict({'Заказчик': 'roll_client',
-                                                             'Исполнитель': 'roll_freelancer'})
-    bot.send_message(call.message.chat.id,
-                     messages.CHOOSE_ROLL,
-                     reply_markup=register_markup)
-
-
 @bot.callback_query_handler(func=lambda call: call.data == 'help')
 def show_help(call: telebot.types.CallbackQuery):
     """Показываем справку"""
@@ -45,24 +34,6 @@ def show_help(call: telebot.types.CallbackQuery):
     bot.send_message(call.message.chat.id,
                      messages.HELP,
                      reply_markup=help_markup)
-
-
-@bot.callback_query_handler(func=lambda call: call.data == 'roll_client')
-def register_client(call: telebot.types.CallbackQuery):
-    """Регистрируем клиента в базе"""
-    if db_client.register_client(call.from_user.id):
-        bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
-    delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
-    show_main_menu(call.message)
-
-
-@bot.callback_query_handler(func=lambda call: call.data == 'roll_freelancer')
-def register_freelancer(call: telebot.types.CallbackQuery):
-    """Регистрируем заказчика в базе"""
-    if db_client.register_freelancer(call.from_user.id):
-        bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
-    delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
-    show_main_menu(call.message)
 
 
 @bot.message_handler(commands=['menu'])
@@ -82,6 +53,37 @@ def show_main_menu(message: telebot.types.Message):
                      reply_markup=markup,
                      text=text)
     delete_messages(chat_id=message.chat.id, mes_ids=[message.id])
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'register')
+def register(call: telebot.types.CallbackQuery):
+    """Предлагаем зарегистрироваться в роли исполнителя или заказчика"""
+    delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
+    register_markup = markups.make_inline_markups_from_dict({'Заказчик': 'register_client',
+                                                             'Исполнитель': 'register_freelancer'})
+    bot.send_message(call.message.chat.id,
+                     messages.CHOOSE_ROLL,
+                     reply_markup=register_markup)
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'register_client' or 'register_freelancer')
+def register_client(call: telebot.types.CallbackQuery):
+    """Регистрируем пользователя в базе"""
+
+    # if registered = db_client.register_user(call.from_user.id, roll=call.data.strip(register_)):
+    registered = False
+
+    if call.data == 'register_client':
+        registered = db_client.register_client(call.from_user.id)
+    elif call.data == 'register_freelancer':
+        registered = db_client.register_freelancer(call.from_user.id)
+
+    if registered:
+        bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
+        show_main_menu(call.message)
+    else:
+        bot.answer_callback_query(call.id, text=messages.REGISTER_FALSE)
+    delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
 
 
 @bot.message_handler(regexp='Найти заказ')
