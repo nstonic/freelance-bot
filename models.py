@@ -35,7 +35,8 @@ class Ticket(BaseModel):
     client = ForeignKeyField(Client, backref='tickets', on_delete='CASCADE')
     title = CharField(max_length=100)
     text = TextField()
-    rate = DecimalField()
+    rate = DecimalField(default=5000.0)
+    created_at = DateTimeField(default=datetime.datetime.now)
 
 
 class Order(BaseModel):
