@@ -197,7 +197,7 @@ def show_ticket_info(call: telebot.types.CallbackQuery):
         'created_at': '17.02.23',
         'text': 'Из кирпича',
         'rate': 5000,
-        'status': 'В работе',
+        'status': messages.TICKET_STATUSES['waiting'],
         'freelancer': 'Вася',
         'estimate_time': '17.02.24',
         'completed_at': 'н/а'
@@ -205,15 +205,29 @@ def show_ticket_info(call: telebot.types.CallbackQuery):
     ticket_markup = None
 
     user_role = db_client.who_is_it(call.message.chat.id)
-    if user_role == 'client' and ticket['status'] != messages.TICKET_INFO['waiting']:
-        ticket_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_freelancer',
-                                                               'Читать переписку': 'show_chat'})
+
+    if user_role == 'client':
+        if ticket['status'] != messages.TICKET_STATUSES['waiting']:
+            ticket_markup = markups.make_inline_markups_from_dict(
+                {'Отправить сообщение': 'send_mes_to_freelancer',
+                 'Читать переписку': 'show_chat',
+                 'Удалить тикет': 'delete_ticket'}
+            )
+        else:
+            ticket_markup = markups.make_inline_markups_from_dict(
+                {'Удалить тикет': 'delete_ticket'}
+            )
+
     if user_role == 'freelancer':
         if ticket['status'] == messages.TICKET_INFO['waiting']:
-            ticket_markup = markups.make_inline_markups_from_dict({'Взять в работу': 'take_ticket'})
-        elif ticket['status'] != messages.TICKET_INFO['waiting']:
-            ticket_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_client',
-                                                                   'Читать переписку': 'show_chat'})
+            ticket_markup = markups.make_inline_markups_from_dict(
+                {'Взять в работу': 'take_ticket'}
+            )
+        else:
+            ticket_markup = markups.make_inline_markups_from_dict(
+                {'Отправить сообщение': 'send_mes_to_client',
+                 'Читать переписку': 'show_chat'}
+            )
 
     bot.answer_callback_query(call.id, text='Информация по тикету')
     bot.send_message(chat_id=call.message.chat.id,
@@ -226,6 +240,7 @@ def show_ticket_info(call: telebot.types.CallbackQuery):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
 def show_order_info(call: telebot.types.CallbackQuery):
     """Отображаем информацию по заказу"""
+
     # order = db_client.show_order(int(call.data.strip('order_')))
     order = {
         'title': 'Построить дом',
