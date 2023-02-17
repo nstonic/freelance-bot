@@ -127,9 +127,16 @@ def create_new_ticket(message: telebot.types.Message):
 
 def get_title(message: telebot.types.Message, bot_message_id: int):
     """Получаем от клиента название тикета"""
-    ticket = dict(
-        title=message.text
-    )
+    try:
+        ticket = dict(title=message.text)
+    except ValueError:
+        delete_messages(chat_id=message.chat.id, mes_ids=[message.id, bot_message_id])
+        bot_message_id = bot.send_message(message.chat.id, text=messages.TITLE_ERROR).id
+        bot.register_next_step_handler(message,
+                                       get_title,
+                                       bot_message_id=bot_message_id)
+        return
+
     delete_messages(chat_id=message.chat.id, mes_ids=[message.id, bot_message_id])
     bot_message_id = bot.send_message(message.chat.id, text=messages.INPUT_TICKET_TEXT).id
     bot.register_next_step_handler(message,
@@ -220,7 +227,7 @@ def show_ticket_info(call: telebot.types.CallbackQuery):
             )
 
     if user_role == 'freelancer':
-        if ticket['status'] == messages.TICKET_INFO['waiting']:
+        if ticket['status'] == messages.TICKET_STATUSES['waiting']:
             ticket_markup = markups.make_inline_markups_from_dict(
                 {'Взять в работу': 'take_ticket'}
             )
