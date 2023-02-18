@@ -52,7 +52,7 @@ def delete_ticket(ticket_id) -> bool:
         return False
 
 
-def show_order(order_id: int) -> Order:
+def show_order(order_id: int) -> dict:
     """Возвращает информацию по конкретному заказу."""
     order = Order.get(id=order_id)
     serialized_order = {
@@ -71,7 +71,7 @@ def show_order(order_id: int) -> Order:
 def show_my_orders(telegram_id: int) -> list:
     """Возвращает все не закрытые заказы фрилансера"""
     freelancer = Freelancer.get(telegram_id=telegram_id)
-    return list(freelancer.orders.where(Order.status=='in_progress'))
+    return list(freelancer.orders.where(Order.status == 'in_progress'))
 
 
 def start_work(ticket_id: int, telegram_id: int, estimate_time: str) -> bool:
@@ -79,9 +79,9 @@ def start_work(ticket_id: int, telegram_id: int, estimate_time: str) -> bool:
     freelancer = Freelancer.get(telegram_id=telegram_id)
     ticket = Ticket.get(id=ticket_id)
     Order.create(ticket=ticket,
-        freelancer=freelancer,
-        estimate_time=estimate_time
-    )
+                 freelancer=freelancer,
+                 estimate_time=estimate_time
+                 )
     return True
 
 
@@ -115,7 +115,7 @@ def show_ticket(ticket_id: int) -> dict:
 def get_ticket_status(ticket):
     if ticket.orders:
         return ticket.orders.order_by(Order.started_at.desc()).first().status
-    return 'Ожидает исполнителя'
+    return 'waiting'
 
 
 def get_ticket_freelancer(ticket):
@@ -141,3 +141,18 @@ def get_order_id(ticket):
     if ticket.orders:
         return ticket.orders.order_by(Order.started_at.desc()).first().id
     return None
+
+
+def change_status(order_id) -> bool:
+    """Фрилансер меняет статус ордера"""
+    pass
+
+
+def show_chat(order_id) -> str:
+    """Возвращает переписку по данному ордеру."""
+    pass
+
+
+def get_chat_message(order_id: int, user_role: str, message_text: str):
+    """Записываем сообщение в чат"""
+    pass
