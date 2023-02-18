@@ -45,7 +45,7 @@ class Order(BaseModel):
     estimate_time = CharField(max_length=100)
     started_at = DateTimeField(default=datetime.datetime.now)
     completed_at = DateTimeField(null=True)
-    status = CharField(max_length=100, default='at_work') # posible_values: at_work, completed, cancelled
+    status = CharField(max_length=100, default='in_progress')
 
 
 class Message(BaseModel):
