@@ -45,22 +45,44 @@ def find_tickets() -> list:
 
 def delete_ticket(ticket_id) -> bool:
     """Удаляет тикет"""
-    pass
+    try:
+        Ticket.get(id=ticket_id).delete_instance()
+        return True
+    except Ticket.DoesNotExist:
+        return False
 
 
 def show_order(order_id: int) -> Order:
     """Возвращает информацию по конкретному заказу."""
-    pass
+    order = Order.get(id=order_id)
+    serialized_order = {
+        'client_id': order.ticket.client.telegram_id,
+        'title': order.ticket.title,
+        'started_at': order.started_at.strftime("%d/%m/%Y, %H:%M"),
+        'text': order.ticket.text,
+        'status': order.status,
+        'freelancer': order.freelancer.telegram_id,
+        'estimate_time': order.estimate_time,
+        'completed_at': order.completed_at
+    }
+    return serialized_order
 
 
 def show_my_orders(telegram_id: int) -> list:
     """Возвращает все не закрытые заказы фрилансера"""
-    pass
+    freelancer = Freelancer.get(telegram_id=telegram_id)
+    return list(freelancer.orders.where(Order.status=='in_progress'))
 
 
-def start_work() -> bool:
+def start_work(ticket_id: int, telegram_id: int, estimate_time: str) -> bool:
     """Фрилансер берет в работу тикет"""
-    pass
+    freelancer = Freelancer.get(telegram_id=telegram_id)
+    ticket = Ticket.get(id=ticket_id)
+    Order.create(ticket=ticket,
+        freelancer=freelancer,
+        estimate_time=estimate_time
+    )
+    return True
 
 
 def show_tickets(telegram_id: int) -> list:
@@ -69,7 +91,7 @@ def show_tickets(telegram_id: int) -> list:
         .tickets \
         .select(Ticket, Order) \
         .join(Order, JOIN.LEFT_OUTER) \
-        .where((Order.status == None) | (Order.status != 'complete'))
+        .where((Order.status == None) | (Order.status != 'finished'))
     return list(uncomplited_tickets)
 
 
@@ -77,8 +99,10 @@ def show_ticket(ticket_id: int) -> dict:
     """Возвращает информацию по конкретному тикету."""
     ticket = Ticket.get(id=ticket_id)
     serialized_ticket = {
+        'client_id': ticket.client.telegram_id,
+        'order_id': get_order_id(ticket),
         'title': ticket.title,
-        'created_at': ticket.created_at,
+        'created_at': ticket.created_at.strftime("%d/%m/%Y, %H:%M"),
         'text': ticket.text,
         'status': get_ticket_status(ticket),
         'freelancer': get_ticket_freelancer(ticket),
@@ -108,5 +132,12 @@ def get_ticket_estimate_time(ticket):
 
 def get_ticket_complited_at(ticket):
     if ticket.orders:
-        return ticket.orders.order_by(Order.started_at.desc()).first().completed_at
+        completed_at = ticket.orders.order_by(Order.started_at.desc()).first().completed_at
+        return completed_at.strftime("%d/%m/%Y, %H:%M")
+    return None
+
+
+def get_order_id(ticket):
+    if ticket.orders:
+        return ticket.orders.order_by(Order.started_at.desc()).first().id
     return None
