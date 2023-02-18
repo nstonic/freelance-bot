@@ -45,7 +45,11 @@ def find_tickets() -> list:
 
 def delete_ticket(ticket_id) -> bool:
     """Удаляет тикет"""
-    pass
+    try:
+        Ticket.get(id=ticket_id).delete_instance()
+        return True
+    except Ticket.DoesNotExist:
+        return False
 
 
 def show_order(order_id: int) -> Order:
@@ -69,7 +73,7 @@ def show_tickets(telegram_id: int) -> list:
         .tickets \
         .select(Ticket, Order) \
         .join(Order, JOIN.LEFT_OUTER) \
-        .where((Order.status == None) | (Order.status != 'complete'))
+        .where((Order.status == None) | (Order.status != 'finished'))
     return list(uncomplited_tickets)
 
 
@@ -77,6 +81,8 @@ def show_ticket(ticket_id: int) -> dict:
     """Возвращает информацию по конкретному тикету."""
     ticket = Ticket.get(id=ticket_id)
     serialized_ticket = {
+        'client_id': ticket.client.telegram_id,
+        'order_id': get_order_id(ticket),
         'title': ticket.title,
         'created_at': ticket.created_at,
         'text': ticket.text,
@@ -109,4 +115,10 @@ def get_ticket_estimate_time(ticket):
 def get_ticket_complited_at(ticket):
     if ticket.orders:
         return ticket.orders.order_by(Order.started_at.desc()).first().completed_at
+    return None
+
+
+def get_order_id(ticket):
+    if ticket.orders:
+        return ticket.orders.order_by(Order.started_at.desc()).first().id
     return None
