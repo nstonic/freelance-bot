@@ -70,12 +70,19 @@ def show_order(order_id: int) -> Order:
 
 def show_my_orders(telegram_id: int) -> list:
     """Возвращает все не закрытые заказы фрилансера"""
-    pass
+    freelancer = Freelancer.get(telegram_id=telegram_id)
+    return list(freelancer.orders.where(Order.status=='in_progress'))
 
 
-def start_work() -> bool:
+def start_work(ticket_id: int, telegram_id: int, estimate_time: str) -> bool:
     """Фрилансер берет в работу тикет"""
-    pass
+    freelancer = Freelancer.get(telegram_id=telegram_id)
+    ticket = Ticket.get(id=ticket_id)
+    Order.create(ticket=ticket,
+        freelancer=freelancer,
+        estimate_time=estimate_time
+    )
+    return True
 
 
 def show_tickets(telegram_id: int) -> list:
