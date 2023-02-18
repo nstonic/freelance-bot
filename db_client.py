@@ -54,7 +54,18 @@ def delete_ticket(ticket_id) -> bool:
 
 def show_order(order_id: int) -> Order:
     """Возвращает информацию по конкретному заказу."""
-    pass
+    order = Order.get(id=order_id)
+    serialized_order = {
+        'client_id': order.ticket.client.telegram_id,
+        'title': order.ticket.title,
+        'started_at': order.started_at.strftime("%d/%m/%Y, %H:%M"),
+        'text': order.ticket.text,
+        'status': order.status,
+        'freelancer': order.freelancer.telegram_id,
+        'estimate_time': order.estimate_time,
+        'completed_at': order.completed_at
+    }
+    return serialized_order
 
 
 def show_my_orders(telegram_id: int) -> list:
