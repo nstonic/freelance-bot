@@ -84,7 +84,7 @@ def show_ticket(ticket_id: int) -> dict:
         'client_id': ticket.client.telegram_id,
         'order_id': get_order_id(ticket),
         'title': ticket.title,
-        'created_at': ticket.created_at,
+        'created_at': ticket.created_at.strftime("%d/%m/%Y, %H:%M"),
         'text': ticket.text,
         'status': get_ticket_status(ticket),
         'freelancer': get_ticket_freelancer(ticket),
@@ -114,7 +114,8 @@ def get_ticket_estimate_time(ticket):
 
 def get_ticket_complited_at(ticket):
     if ticket.orders:
-        return ticket.orders.order_by(Order.started_at.desc()).first().completed_at
+        completed_at = ticket.orders.order_by(Order.started_at.desc()).first().completed_at
+        return completed_at.strftime("%d/%m/%Y, %H:%M")
     return None
 
 
