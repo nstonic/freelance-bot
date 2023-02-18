@@ -58,22 +58,37 @@ def register_user(call: telebot.types.CallbackQuery):
         bot.answer_callback_query(call.id, text=messages.REGISTER_FALSE)
 
 
-@bot.message_handler(regexp='Найти заказ')
-def find_tickets(message: telebot.types.Message):
-    """Выводим список 5 случайных свободных заказов"""
-    user = db_client.who_is_it(message.from_user.id)
-    if user == 'freelancer':
-        tickets = db_client.find_tickets()
-        markup = markups.make_inline_markups_from_dict(
-            {ticket.title: f'ticket_{ticket.get_id()}'
-             for ticket in tickets}
+@bot.message_handler(regexp='Мои тикеты')
+def show_client_tickets(message: telebot.types.Message):
+    """Выводим список тикетов клиента"""
+    if tickets := db_client.find_tickets():
+        bot.send_message(
+            message.chat.id,
+            messages.MY_TICKETS,
+            reply_markup=markups.make_inline_markups_from_dict(
+                {ticket.title: f'ticket_{ticket.get_id()}'
+                 for ticket in tickets}
+            )
         )
-        text = messages.TICKET_CHOICE if tickets else messages.NO_ACTIVE_TICKETS
-        bot.send_message(message.chat.id, text, reply_markup=markup)
-    elif user == 'client':
-        bot.send_message(message.chat.id, text=messages.SEARCHING_IS_NOT_ALLOWED)
     else:
-        start(message)
+        bot.send_message(message.chat.id, messages.NO_TICKETS)
+
+
+@bot.message_handler(regexp='Мои тикеты')
+def show_client_tickets(message: telebot.types.Message):
+    """Выводим список тикетов клиента"""
+    if tickets := db_client.find_tickets():
+        bot.send_message(
+            message.chat.id,
+            messages.MY_TICKETS,
+            reply_markup=markups.make_inline_markups_from_dict(
+                {ticket.title: f'ticket_{ticket.get_id()}'
+                 for ticket in tickets}
+            )
+        )
+    else:
+        bot.send_message(message.chat.id, messages.NO_TICKETS)
+    show_main_menu(message)
 
 
 @bot.message_handler(regexp='Создать тикет')
@@ -134,20 +149,23 @@ def get_text(message: telebot.types.Message, ticket: dict):
     show_main_menu(message)
 
 
-@bot.message_handler(regexp='Мои тикеты')
-def show_client_tickets(message: telebot.types.Message):
-    """Выводим список тикетов клиента"""
-    if tickets := db_client.find_tickets():
-        bot.send_message(
-            message.chat.id,
-            messages.MY_TICKETS,
-            reply_markup=markups.make_inline_markups_from_dict(
-                {ticket.title: f'ticket_{ticket.get_id()}'
-                 for ticket in tickets}
-            )
+@bot.message_handler(regexp='Найти заказ')
+def find_tickets(message: telebot.types.Message):
+    """Выводим список 5 случайных свободных заказов"""
+    user = db_client.who_is_it(message.from_user.id)
+    if user == 'freelancer':
+        tickets = db_client.find_tickets()
+        markup = markups.make_inline_markups_from_dict(
+            {ticket.title: f'ticket_{ticket.get_id()}'
+             for ticket in tickets}
         )
+        text = messages.TICKET_CHOICE if tickets else messages.NO_ACTIVE_TICKETS
+        bot.send_message(message.chat.id, text, reply_markup=markup)
+    elif user == 'client':
+        bot.send_message(message.chat.id, text=messages.SEARCHING_IS_NOT_ALLOWED)
     else:
-        bot.send_message(message.chat.id, messages.NO_TICKETS)
+        start(message)
+    show_main_menu(message)
 
 
 @bot.message_handler(regexp='Заказы в работе')
@@ -164,6 +182,7 @@ def show_freelancer_orders(message: telebot.types.Message):
         )
     else:
         bot.send_message(message.chat.id, messages.NO_ORDERS)
+    show_main_menu(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
@@ -181,11 +200,12 @@ def show_ticket_info(call: telebot.types.CallbackQuery):
         buttons = {'Взять в работу': 'take_ticket'}
 
     ticket_inline_markup = markups.make_inline_markups_from_dict(buttons)
-    bot.answer_callback_query(call.id, text=f'Информация по тикету {ticket["title"]}')
+    bot.answer_callback_query(call.id, text=messages.TICKET.format(ticket["title"]))
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.TICKET_INFO.format(**ticket),
                      reply_markup=ticket_inline_markup,
                      parse_mode='HTML')
+    show_main_menu(messages)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
@@ -202,6 +222,7 @@ def show_order_info(call: telebot.types.CallbackQuery):
                      text=messages.ORDER_INFO.format(**order),
                      parse_mode='HTML',
                      reply_markup=order_inline_markup)
+    show_main_menu(messages)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('show_chat_order_'))
@@ -209,12 +230,11 @@ def show_chat(call: telebot.types.CallbackQuery):
     """Показываем чат. Принимаем сообщение в чат.
     Кнопка "закрыть чат" """
     chat = db_client.show_chat(order_id=int(call.data.lstrip('show_chat_order_')))
-    menu = markups.get_back_main_menu()
     bot.send_message(chat_id=call.message.chat.id,
                      text=chat['text'])
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.SEND_MESSAGE,
-                     reply_markup=menu)
+                     reply_markup=markups.get_back_main_menu())
     bot.register_next_step_handler(call.message,
                                    get_chat_message,
                                    call=call)
@@ -230,14 +250,6 @@ def get_chat_message(message: telebot.types.Message, call: telebot.types.Callbac
         return
     db_client.get_chat_msg(message.text)
     show_chat(call)
-
-
-# def delete_messages(chat_id: int, mes_ids: list):
-#     for mes_id in mes_ids:
-#         try:
-#             bot.delete_message(chat_id=chat_id, message_id=mes_id)
-#         except telebot.apihelper.ApiTelegramException:
-#             pass
 
 
 if __name__ == '__main__':
