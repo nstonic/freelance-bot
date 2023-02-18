@@ -56,7 +56,7 @@ def show_order(order_id: int) -> dict:
     """Возвращает информацию по конкретному заказу."""
     order = Order.get(id=order_id)
     serialized_order = {
-        'client': order.ticket.client.telegram_id,
+        'client_id': order.ticket.client.telegram_id,
         'title': order.ticket.title,
         'started_at': order.started_at.strftime("%d/%m/%Y, %H:%M"),
         'text': order.ticket.text,

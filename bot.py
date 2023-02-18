@@ -159,7 +159,7 @@ def get_text(message: telebot.types.Message, ticket: dict):
                      text=messages.TICKET_CREATED.format(**ticket),
                      parse_mode='HTML')
     db_client.create_ticket(message.chat.id, **ticket)
-    show_client_tickets(message)
+    show_main_menu(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('delete_ticket_'))
@@ -320,6 +320,7 @@ def get_chat_message(message: telebot.types.Message,
         bot.answer_callback_query(call.id, messages.ERROR_500)
         call.data = call.data.lstrip('show_chat_')
         show_order_info(call)
+    send_chat_message(order_id, message)
 
 
 def send_chat_message(order_id: int, message: telebot.types.Message):
@@ -329,13 +330,22 @@ def send_chat_message(order_id: int, message: telebot.types.Message):
     order = db_client.show_order(order_id)
     receiver_id = order[receiver]
     format_values = dict(
-        order_or_ticket={'client': 'заказу', 'freelancer': 'тикету'}[user_role],
         title=order['title'],
         text=message.text
     )
-    chat_markup = markups.make_inline_markups_from_dict({'Чат': f'show_chat_order_{order_id}'})
+    if receiver == 'client':
+        chat_markup = markups.make_inline_markups_from_dict(
+            {f'Открыть тикет': f'ticket_{order["ticket_id"]}'}
+        )
+        text = messages.INCOMING_IN_TICKET.format(**format_values)
+    else:
+        chat_markup = markups.make_inline_markups_from_dict(
+            {f'Открыть заказ': f'ticket_{order_id}'}
+        )
+        text = messages.INCOMING_IN_ORDER.format(**format_values)
     bot.send_message(receiver_id,
-                     messages.INCOMING.format(**format_values),
+                     text,
+                     parse_mode='HTML',
                      reply_markup=chat_markup)
 
 
