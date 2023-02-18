@@ -1,7 +1,5 @@
 from telebot import types
 
-import models
-
 
 def make_inline_markups_from_dict(btns: dict, row_width: int = 2) -> types.InlineKeyboardMarkup:
     """Создает InlineKeyboardMarkup из словаря 'текст_кнопки':'callback_data' """
@@ -21,6 +19,14 @@ def make_menu_from_list(buttons_title: list, row_width: int = 2) -> types.ReplyK
     return markup
 
 
+def get_order_buttons(order_id: int) -> types.InlineKeyboardMarkup:
+    order_inline_markup = types.InlineKeyboardMarkup(row_width=2)
+    close_btn = types.InlineKeyboardButton(text='Завершить', callback_data=f'close_order_{order_id}')
+    cancel_btn = types.InlineKeyboardButton(text='Отказаться', callback_data=f'cancel_order_{order_id}')
+    order_inline_markup.add(close_btn, cancel_btn)
+    order_inline_markup.add(types.InlineKeyboardButton(text='Чат', callback_data=f'show_chat_order_{order_id}'))
+    return order_inline_markup
+
+
 def get_back_main_menu() -> types.ReplyKeyboardMarkup:
     return make_menu_from_list(['Назад', 'Основное меню'])
-
