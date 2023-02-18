@@ -59,6 +59,28 @@ def register_user(call: telebot.types.CallbackQuery):
         bot.answer_callback_query(call.id, text=messages.REGISTER_FALSE)
 
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
+def show_ticket_info(call: telebot.types.CallbackQuery):
+    """Отображаем информацию по тикету"""
+    ticket_id = int(call.data.lstrip('ticket_'))
+    ticket = db_client.show_ticket(ticket_id)
+    ticket['status'] = messages.TICKET_STATUSES[ticket['status']]
+    user_role = db_client.who_is_it(call.message.chat.id)
+    buttons = {}
+    if user_role == 'client':
+        buttons['Удалить тикет'] = f'delete_ticket_{ticket_id}'
+        if ticket['status'] != messages.TICKET_STATUSES['waiting']:
+            buttons['Чат'] = f'show_chat_order_{ticket["order_id"]}'
+    if user_role == 'freelancer':
+        buttons = {'Взять в работу': f'take_ticket_{ticket_id}'}
+
+    ticket_inline_markup = markups.make_inline_markups_from_dict(buttons)
+    bot.send_message(chat_id=call.message.chat.id,
+                     text=messages.TICKET_INFO.format(**ticket),
+                     reply_markup=ticket_inline_markup,
+                     parse_mode='HTML')
+
+
 #  ********************  Сторона клиента  ********************  #
 
 @bot.message_handler(regexp='Мои тикеты')
@@ -79,7 +101,6 @@ def show_client_tickets(message: telebot.types.Message):
         )
     else:
         bot.send_message(message.chat.id, messages.NO_TICKETS)
-    show_main_menu(message)
 
 
 @bot.message_handler(regexp='Создать тикет')
@@ -140,29 +161,6 @@ def get_text(message: telebot.types.Message, ticket: dict):
     show_client_tickets(message)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
-def show_ticket_info(call: telebot.types.CallbackQuery):
-    """Отображаем информацию по тикету"""
-    ticket_id = int(call.data.lstrip('ticket_'))
-    ticket = db_client.show_ticket(ticket_id)
-    ticket['status'] = messages.TICKET_STATUSES[ticket['status']]
-    user_role = db_client.who_is_it(call.message.chat.id)
-    buttons = {}
-    if user_role == 'client':
-        buttons['Удалить тикет'] = f'delete_ticket_{ticket_id}'
-        if ticket['status'] != messages.TICKET_STATUSES['waiting']:
-            buttons['Чат'] = f'show_chat_order_{ticket["order_id"]}'
-    if user_role == 'freelancer':
-        buttons = {'Взять в работу': f'take_ticket_{ticket_id}'}
-
-    ticket_inline_markup = markups.make_inline_markups_from_dict(buttons)
-    bot.send_message(chat_id=call.message.chat.id,
-                     text=messages.TICKET_INFO.format(**ticket),
-                     reply_markup=ticket_inline_markup,
-                     parse_mode='HTML')
-    show_main_menu(call.message)
-
-
 @bot.callback_query_handler(func=lambda call: call.data.startswith('delete_ticket_'))
 def delete_ticket(call: telebot.types.CallbackQuery):
     """Удаляем тикет"""
@@ -193,7 +191,6 @@ def find_tickets(message: telebot.types.Message):
         bot.send_message(message.chat.id, text=messages.SEARCHING_IS_NOT_ALLOWED)
     else:
         start(message)
-    show_main_menu(message)
 
 
 @bot.message_handler(regexp='Заказы в работе')
@@ -211,7 +208,6 @@ def show_freelancer_orders(message: telebot.types.Message):
         )
     else:
         bot.send_message(message.chat.id, messages.NO_ORDERS)
-    show_main_menu(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
@@ -227,11 +223,10 @@ def show_order_info(call: telebot.types.CallbackQuery):
                      text=messages.ORDER_INFO.format(**order),
                      parse_mode='HTML',
                      reply_markup=order_inline_markup)
-    show_main_menu(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('take_ticket_'))
-def delete_ticket(call: telebot.types.CallbackQuery):
+def take_ticket(call: telebot.types.CallbackQuery):
     """Фрилансер берет тикет в работу"""
     ticket_id = int(call.data.lstrip('take_ticket_'))
     bot.register_next_step_handler(call.message,
@@ -243,6 +238,7 @@ def delete_ticket(call: telebot.types.CallbackQuery):
 
 
 def get_estimate_time(message: telebot.types.Message, ticket_id: int):
+    """Запрашиваем оценочное время исполнения"""
     if message.text == 'Назад':
         show_freelancer_orders(message)
         return
@@ -263,7 +259,6 @@ def close_order(call: telebot.types.CallbackQuery):
         bot.answer_callback_query(call.id, text=messages.ORDER_CLOSED)
     else:
         bot.answer_callback_query(call.id, text=messages.ERROR_500)
-    show_freelancer_orders(call.message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('cancel_order_'))
@@ -273,7 +268,6 @@ def cancel_order(call: telebot.types.CallbackQuery):
         bot.answer_callback_query(call.id, text=messages.ORDER_CANCELED)
     else:
         bot.answer_callback_query(call.id, text=messages.ERROR_500)
-    show_freelancer_orders(call.message)
 
 
 #  ********************  Чат  ********************  #
@@ -305,13 +299,28 @@ def get_chat_message(message: telebot.types.Message,
     if message.text == 'Основное меню':
         show_main_menu(message)
         return
+
     if db_client.get_chat_msg(user_role=db_client.who_is_it(message.chat.id),
                               message_text=message.text,
                               order_id=order_id):
         bot.answer_callback_query(call.id, messages.MESSAGE_SEND)
+        send_chat_message(order_id, message)
     else:
         bot.answer_callback_query(call.id, messages.ERROR_500)
         show_chat(call)
+
+
+def send_chat_message(order_id: int, message: telebot.types.Message):
+    """Пересылаем сообщение другой стороне"""
+    user_role = db_client.who_is_it(message.chat.id)
+    order = db_client.show_order(order_id)
+    user_id = order[user_role]
+    format_values = dict(
+        order_or_ticket={'client': 'тикету', 'freelancer': 'заказу'}[user_role],
+        title=order['title'],
+        text=message.text
+    )
+    bot.send_message(user_id, messages.INCOMING.format(format_values))
 
 
 if __name__ == '__main__':
