@@ -1,4 +1,5 @@
 import os
+from datetime import date
 
 import telebot
 from dotenv import load_dotenv
@@ -231,13 +232,16 @@ def take_ticket(call: telebot.types.CallbackQuery):
     ticket_id = int(call.data.lstrip('take_ticket_'))
     bot.register_next_step_handler(call.message,
                                    get_estimate_time,
-                                   ticket_id=ticket_id)
+                                   ticket_id=ticket_id,
+                                   call=call)
     bot.send_message(call.message.chat.id,
                      text=messages.SET_EST_TIME,
                      reply_markup=markups.get_back_main_menu())
 
 
-def get_estimate_time(message: telebot.types.Message, ticket_id: int):
+def get_estimate_time(message: telebot.types.Message,
+                      call: telebot.types.CallbackQuery,
+                      ticket_id: int):
     """Запрашиваем оценочное время исполнения"""
     if message.text == 'Назад':
         show_freelancer_orders(message)
@@ -245,7 +249,14 @@ def get_estimate_time(message: telebot.types.Message, ticket_id: int):
     if message.text == 'Основное меню':
         show_main_menu(message)
         return
-    est_time = message.text
+
+    try:
+        est_time = date.fromisoformat(message.text).strftime("%d/%m/%Y, %H:%M")
+    except ValueError:
+        bot.send_message(message.chat.id, messages.INVALID_DATE)
+        take_ticket(call)
+        return
+
     db_client.start_work(ticket_id=ticket_id,
                          telegram_id=message.chat.id,
                          estimate_time=est_time)
@@ -307,20 +318,25 @@ def get_chat_message(message: telebot.types.Message,
         send_chat_message(order_id, message)
     else:
         bot.answer_callback_query(call.id, messages.ERROR_500)
-        show_chat(call)
+        call.data = call.data.lstrip('show_chat_')
+        show_order_info(call)
 
 
 def send_chat_message(order_id: int, message: telebot.types.Message):
     """Пересылаем сообщение другой стороне"""
     user_role = db_client.who_is_it(message.chat.id)
+    receiver = {'client': 'freelancer', 'freelancer': 'client'}[user_role]
     order = db_client.show_order(order_id)
-    user_id = order[user_role]
+    receiver_id = order[receiver]
     format_values = dict(
-        order_or_ticket={'client': 'тикету', 'freelancer': 'заказу'}[user_role],
+        order_or_ticket={'client': 'заказу', 'freelancer': 'тикету'}[user_role],
         title=order['title'],
         text=message.text
     )
-    bot.send_message(user_id, messages.INCOMING.format(format_values))
+    chat_markup = markups.make_inline_markups_from_dict({'Чат': f'show_chat_order_{order_id}'})
+    bot.send_message(receiver_id,
+                     messages.INCOMING.format(**format_values),
+                     reply_markup=chat_markup)
 
 
 if __name__ == '__main__':
