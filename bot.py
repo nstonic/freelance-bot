@@ -73,7 +73,8 @@ def show_client_tickets(message: telebot.types.Message):
             messages.MY_TICKETS,
             reply_markup=markups.make_inline_markups_from_dict(
                 {ticket.title: f'ticket_{ticket.get_id()}'
-                 for ticket in tickets}
+                 for ticket in tickets},
+                row_width=1
             )
         )
     else:
@@ -89,7 +90,7 @@ def create_new_ticket(message: telebot.types.Message):
         bot.send_message(
             message.chat.id,
             text=messages.INPUT_TITLE,
-            reply_markup=markups.get_back_main_menu()
+            reply_markup=markups.make_menu_from_list(['Создать тикет', 'Мои тикеты'])
         )
         bot.register_next_step_handler(message,
                                        get_title)
@@ -136,7 +137,7 @@ def get_text(message: telebot.types.Message, ticket: dict):
                      text=messages.TICKET_CREATED.format(**ticket),
                      parse_mode='HTML')
     db_client.create_ticket(message.chat.id, **ticket)
-    show_main_menu(message)
+    show_client_tickets(message)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
@@ -155,7 +156,6 @@ def show_ticket_info(call: telebot.types.CallbackQuery):
         buttons = {'Взять в работу': f'take_ticket_{ticket_id}'}
 
     ticket_inline_markup = markups.make_inline_markups_from_dict(buttons)
-    bot.answer_callback_query(call.id, text=messages.TICKET.format(ticket["title"]))
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.TICKET_INFO.format(**ticket),
                      reply_markup=ticket_inline_markup,
@@ -168,6 +168,7 @@ def delete_ticket(call: telebot.types.CallbackQuery):
     """Удаляем тикет"""
     ticket_id = int(call.data.lstrip('delete_ticket_'))
     if db_client.delete_ticket(ticket_id):
+        bot.answer_callback_query(call.id, text=messages.TICKET_DELETED)
         show_client_tickets(call.message)
     else:
         bot.answer_callback_query(messages.ERROR_500)
@@ -183,7 +184,8 @@ def find_tickets(message: telebot.types.Message):
         tickets = db_client.find_tickets()
         markup = markups.make_inline_markups_from_dict(
             {ticket.title: f'ticket_{ticket.get_id()}'
-             for ticket in tickets}
+             for ticket in tickets},
+            row_width=1
         )
         text = messages.TICKET_CHOICE if tickets else messages.NO_ACTIVE_TICKETS
         bot.send_message(message.chat.id, text, reply_markup=markup)
@@ -203,7 +205,8 @@ def show_freelancer_orders(message: telebot.types.Message):
             messages.MY_ORDERS,
             reply_markup=markups.make_inline_markups_from_dict(
                 {order.ticket.title: f'order_{order.get_id()}'
-                 for order in orders}
+                 for order in orders},
+                row_width=1
             )
         )
     else:
