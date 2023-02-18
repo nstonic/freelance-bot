@@ -65,7 +65,7 @@ def find_tickets(message: telebot.types.Message):
     if user == 'freelancer':
         tickets = db_client.find_tickets()
         markup = markups.make_inline_markups_from_dict(
-            {ticket.title:f'ticket_{ticket.get_id()}'
+            {ticket.title: f'ticket_{ticket.get_id()}'
              for ticket in tickets}
         )
         text = messages.TICKET_CHOICE if tickets else messages.NO_ACTIVE_TICKETS
@@ -170,68 +170,74 @@ def show_freelancer_orders(message: telebot.types.Message):
 def show_ticket_info(call: telebot.types.CallbackQuery):
     """Отображаем информацию по тикету"""
     ticket = db_client.show_ticket(int(call.data.lstrip('ticket_')))
-    ticket_markup = None
     user_role = db_client.who_is_it(call.message.chat.id)
 
+    buttons = {}
     if user_role == 'client':
+        buttons['Удалить тикет'] = 'delete_ticket'
         if ticket['status'] != messages.TICKET_STATUSES['waiting']:
-            ticket_markup = markups.make_inline_markups_from_dict(
-                {'Чат': 'show_chat',
-                 'Удалить тикет': 'delete_ticket'}
-            )
-        else:
-            ticket_markup = markups.make_inline_markups_from_dict(
-                {'Удалить тикет': 'delete_ticket'}
-            )
-
+            buttons['Чат'] = f'show_chat_order_{ticket["order_id"]}'
     if user_role == 'freelancer':
-        if ticket['status'] == messages.TICKET_STATUSES['waiting']:
-            ticket_markup = markups.make_inline_markups_from_dict(
-                {'Взять в работу': 'take_ticket'}
-            )
-        else:
-            ticket_markup = markups.make_inline_markups_from_dict(
-                {'Чат': 'show_chat'}
-            )
+        buttons = {'Взять в работу': 'take_ticket'}
 
+    ticket_inline_markup = markups.make_inline_markups_from_dict(buttons)
     bot.answer_callback_query(call.id, text=f'Информация по тикету {ticket["title"]}')
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.TICKET_INFO.format(**ticket),
-                     reply_markup=ticket_markup,
+                     reply_markup=ticket_inline_markup,
                      parse_mode='HTML')
-    delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
 def show_order_info(call: telebot.types.CallbackQuery):
     """Отображаем информацию по заказу"""
 
-    # order = db_client.show_order(int(call.data.strip('order_')))
-    order = {
-        'title': 'Построить дом',
-        'started_at': '17.02.23',
-        'text': 'Из кирпича',
-        'status': 'В работе',
-        'client': 'Петя',
-        'estimate_time': '17.02.24'
-    }
-    order_markup = markups.make_inline_markups_from_dict({'Отправить сообщение': 'send_mes_to_client',
-                                                          'Читать переписку': 'show_chat',
-                                                          'Изменить статус': 'change_status'})
+    order = db_client.show_order(int(call.data.lstrip('order_')))
+    order_inline_markup = markups.make_inline_markups_from_dict(
+        {'Чат': f'show_chat_order_{order["id"]}',
+         'Изменить статус': 'change_status'}
+    )
     bot.answer_callback_query(call.id, text='Ваш заказ')
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.ORDER_INFO.format(**order),
                      parse_mode='HTML',
-                     reply_markup=order_markup)
-    delete_messages(chat_id=call.message.chat.id, mes_ids=[call.message.id])
+                     reply_markup=order_inline_markup)
 
 
-def delete_messages(chat_id: int, mes_ids: list):
-    for mes_id in mes_ids:
-        try:
-            bot.delete_message(chat_id=chat_id, message_id=mes_id)
-        except telebot.apihelper.ApiTelegramException:
-            pass
+@bot.callback_query_handler(func=lambda call: call.data.startswith('show_chat_order_'))
+def show_chat(call: telebot.types.CallbackQuery):
+    """Показываем чат. Принимаем сообщение в чат.
+    Кнопка "закрыть чат" """
+    chat = db_client.show_chat(order_id=int(call.data.lstrip('show_chat_order_')))
+    menu = markups.get_back_main_menu()
+    bot.send_message(chat_id=call.message.chat.id,
+                     text=chat['text'])
+    bot.send_message(chat_id=call.message.chat.id,
+                     text=messages.SEND_MESSAGE,
+                     reply_markup=menu)
+    bot.register_next_step_handler(call.message,
+                                   get_chat_message,
+                                   call=call)
+
+
+def get_chat_message(message: telebot.types.Message, call: telebot.types.CallbackQuery):
+    if message.text == 'Назад':
+        call.data = call.data.lstrip('show_chat_')
+        show_order_info(call)
+        return
+    if message.text == 'Основное меню':
+        show_main_menu(message)
+        return
+    db_client.get_chat_msg(message.text)
+    show_chat(call)
+
+
+# def delete_messages(chat_id: int, mes_ids: list):
+#     for mes_id in mes_ids:
+#         try:
+#             bot.delete_message(chat_id=chat_id, message_id=mes_id)
+#         except telebot.apihelper.ApiTelegramException:
+#             pass
 
 
 if __name__ == '__main__':
