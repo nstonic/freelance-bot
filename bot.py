@@ -220,10 +220,8 @@ def show_order_info(call: telebot.types.CallbackQuery):
     order_id = int(call.data.lstrip('order_'))
     order = db_client.show_order(order_id)
     order['status'] = messages.ORDER_STATUSES[order['status']]
-    order_inline_markup = markups.make_inline_markups_from_dict(
-        {'Чат': f'show_chat_order_{order_id}',
-         'Изменить статус': f'change_status_order_{order_id}'}
-    )
+    order_inline_markup = markups.get_order_buttons(order_id)
+
     bot.answer_callback_query(call.id, text='Ваш заказ')
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.ORDER_INFO.format(**order),
@@ -258,10 +256,24 @@ def get_estimate_time(message: telebot.types.Message, ticket_id: int):
     show_freelancer_orders(message)
 
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('change_status_order_'))
-def change_status(call: telebot.types.CallbackQuery):
-    order_id = int(call.data.lstrip('order_'))
-    db_client.change_status(order_id)
+@bot.callback_query_handler(func=lambda call: call.data.startswith('close_order_'))
+def close_order(call: telebot.types.CallbackQuery):
+    order_id = int(call.data.lstrip('close_order_'))
+    if db_client.close_order(order_id):
+        bot.answer_callback_query(call.id, text=messages.ORDER_CLOSED)
+    else:
+        bot.answer_callback_query(call.id, text=messages.ERROR_500)
+    show_freelancer_orders(call.message)
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('cancel_order_'))
+def cancel_order(call: telebot.types.CallbackQuery):
+    order_id = int(call.data.lstrip('cancel_order_'))
+    if db_client.cancel_order(order_id):
+        bot.answer_callback_query(call.id, text=messages.ORDER_CANCELED)
+    else:
+        bot.answer_callback_query(call.id, text=messages.ERROR_500)
+    show_freelancer_orders(call.message)
 
 
 #  ********************  Чат  ********************  #
@@ -270,9 +282,9 @@ def change_status(call: telebot.types.CallbackQuery):
 def show_chat(call: telebot.types.CallbackQuery):
     """Показываем чат"""
     order_id = int(call.data.lstrip('show_chat_order_'))
-    chat = db_client.show_chat(order_id=order_id)
+    chat = db_client.show_chat(order_id) or messages.NO_MESSAGE
     bot.send_message(chat_id=call.message.chat.id,
-                     text=chat['text'])
+                     text=chat)
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.SEND_MESSAGE,
                      reply_markup=markups.get_back_main_menu())
@@ -282,7 +294,9 @@ def show_chat(call: telebot.types.CallbackQuery):
                                    order_id=order_id)
 
 
-def get_chat_message(message: telebot.types.Message, call: telebot.types.CallbackQuery, order_id: int):
+def get_chat_message(message: telebot.types.Message,
+                     call: telebot.types.CallbackQuery,
+                     order_id: int):
     """Принимаем сообщение в чат"""
     if message.text == 'Назад':
         call.data = call.data.lstrip('show_chat_')
@@ -291,8 +305,13 @@ def get_chat_message(message: telebot.types.Message, call: telebot.types.Callbac
     if message.text == 'Основное меню':
         show_main_menu(message)
         return
-    db_client.get_chat_msg(role=db_client.who_is_it(message.chat.id), text=message.text, order_id=order_id)
-    show_chat(call)
+    if db_client.get_chat_msg(user_role=db_client.who_is_it(message.chat.id),
+                              message_text=message.text,
+                              order_id=order_id):
+        bot.answer_callback_query(call.id, messages.MESSAGE_SEND)
+    else:
+        bot.answer_callback_query(call.id, messages.ERROR_500)
+        show_chat(call)
 
 
 if __name__ == '__main__':

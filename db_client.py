@@ -143,8 +143,13 @@ def get_order_id(ticket):
     return None
 
 
-def change_status(order_id) -> bool:
-    """Фрилансер меняет статус ордера"""
+def close_order(order_id) -> bool:
+    """Исполнитель закрывает заказ (ставим статус finished)"""
+    pass
+
+
+def cancel_order(order_id) -> bool:
+    """Исполнитель отказывается от заказа (ставим статус waiting)"""
     pass
 
 
@@ -153,6 +158,6 @@ def show_chat(order_id) -> str:
     pass
 
 
-def get_chat_message(order_id: int, user_role: str, message_text: str):
+def get_chat_msg(order_id: int, user_role: str, message_text: str) -> bool:
     """Записываем сообщение в чат"""
     pass
