@@ -361,6 +361,7 @@ def show_chat(call: CallbackQuery):
 
 
 def get_whole_chat_in_one_msg(order_id: int) -> str:
+    order = db_client.show_order(order_id)
     chat = db_client.show_chat(order_id)
     if chat:
         compiled_chat = [f'{msg["sending_at"].replace(microsecond=0)}:  {msg["user_role"]}\n{msg["text"]}'
@@ -368,7 +369,7 @@ def get_whole_chat_in_one_msg(order_id: int) -> str:
         chat_text = '\n\n'.join(compiled_chat)
     else:
         chat_text = messages.NO_MESSAGES
-    return f'Предыдущая переписка:\n\n{chat_text}'
+    return f'Предыдущая переписка по заказу "{order["title"]}":\n\n{chat_text}'
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('answer_order_'))
