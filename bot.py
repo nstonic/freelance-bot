@@ -170,6 +170,11 @@ def delete_ticket(call: CallbackQuery):
     if db_client.delete_ticket(ticket_id):
         bot.answer_callback_query(call.id, text=messages.TICKET_DELETED)
         show_client_tickets(call.message)
+
+        ticket = db_client.show_ticket(ticket_id)
+        send_notice(order_id=ticket['order_id'],
+                    notice=messages.DELETED.format(ticket['title']),
+                    sender_id=call.message.chat.id)
     else:
         bot.answer_callback_query(messages.ERROR_500)
 
@@ -263,7 +268,7 @@ def get_estimate_time(message: Message,
                                     estimate_time=est_time)
     order = db_client.show_order(order_id)
     send_notice(order_id=order_id,
-                notice=messages.ORDER_TAKEN.format(order['title']),
+                notice=messages.TICKET_TAKEN.format(order['title']),
                 sender_id=message.chat.id)
     show_freelancer_orders(message)
 
@@ -275,7 +280,7 @@ def close_order(call: CallbackQuery):
     if db_client.close_order(order_id):
         bot.answer_callback_query(call.id, text=messages.CLOSED)
         send_notice(order_id=order_id,
-                    notice=messages.ORDER_CLOSED.format(order['title']),
+                    notice=messages.TICKET_CLOSED.format(order['title']),
                     sender_id=call.message.chat.id)
     else:
         bot.answer_callback_query(call.id, text=messages.ERROR_500)
@@ -288,7 +293,7 @@ def cancel_order(call: CallbackQuery):
     if db_client.cancel_order(order_id):
         bot.answer_callback_query(call.id, text=messages.CANCELED)
         send_notice(order_id=order_id,
-                    notice=messages.ORDER_CANCELED.format(order['title']),
+                    notice=messages.TICKET_CANCELED.format(order['title']),
                     sender_id=call.message.chat.id)
     else:
         bot.answer_callback_query(call.id, text=messages.ERROR_500)
