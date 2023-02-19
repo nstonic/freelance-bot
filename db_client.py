@@ -1,7 +1,7 @@
 import datetime
 
 from peewee import IntegrityError
-from peewee import fn, JOIN
+from peewee import fn
 
 from models import Client, Freelancer, Ticket, Order, Message
 
@@ -76,7 +76,7 @@ def show_my_orders(telegram_id: int) -> list:
     return list(freelancer.orders.where(Order.status == 'in_progress'))
 
 
-def start_work(ticket_id: int, telegram_id: int, estimate_time: str) -> int:
+def start_work(ticket_id: int, telegram_id: int, estimate_time: datetime.date) -> int:
     """Фрилансер берет в работу тикет"""
     freelancer = Freelancer.get(telegram_id=telegram_id)
     ticket = Ticket.get(id=ticket_id)

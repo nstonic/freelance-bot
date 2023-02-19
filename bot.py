@@ -1,5 +1,5 @@
 import os
-from datetime import date, datetime
+from datetime import date
 
 import telebot
 from telebot.types import Message, CallbackQuery
@@ -70,9 +70,11 @@ def show_ticket_info(call: CallbackQuery):
     ticket_id = int(call.data.lstrip('ticket_'))
     ticket = db_client.show_ticket(ticket_id)
     ticket['status'] = messages.TICKET_STATUSES[ticket['status']]
-    for property, value in ticket.items():
-        if isinstance(value, datetime):
-            ticket[property] = value.strftime('%Y.%m.%d %H:%M:%S')
+    ticket['created_at'] = ticket['created_at'].strftime('%Y.%m.%d %H:%M:%S')
+    if ticket['estimate_time']:
+        ticket['estimate_time'] = ticket['estimate_time'].strftime('%Y.%m.%d')
+    else:
+        ticket['estimate_time'] = 'отсутствует'
 
     user_role = db_client.who_is_it(call.message.chat.id)
     buttons = {}
@@ -236,7 +238,6 @@ def show_freelancer_orders(message: Message):
                 row_width=1
             )
         )
-        show_main_menu(message)
     else:
         bot.send_message(message.chat.id, messages.NO_ORDERS)
 
@@ -248,9 +249,8 @@ def show_order_info(call: CallbackQuery):
     order_id = int(call.data.lstrip('order_'))
     order = db_client.show_order(order_id)
     order['status'] = messages.ORDER_STATUSES[order['status']]
-    for property, value in order.items():
-        if isinstance(value, datetime):
-            order[property] = value.strftime('%Y.%m.%d')
+    order['started_at'] = order['started_at'].strftime('%Y.%m.%d %H:%M:%S')
+    order['estimate_time'] = order['estimate_time'].strftime('%Y.%m.%d')
 
     order_inline_markup = markups.get_order_buttons(order_id)
 
@@ -286,9 +286,14 @@ def get_estimate_time(message: Message, call: CallbackQuery, ticket_id: int):
         return
 
     try:
-        est_time = date.fromisoformat(message.text).strftime("%d/%m/%Y, %H:%M")
+        est_time = date.fromisoformat(message.text)
     except ValueError:
         bot.send_message(message.chat.id, messages.INVALID_DATE)
+        take_ticket(call)
+        return
+
+    if est_time < date.today():
+        bot.send_message(message.chat.id, messages.WRONG_DATE)
         take_ticket(call)
         return
 
