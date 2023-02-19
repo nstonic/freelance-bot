@@ -88,12 +88,13 @@ def show_ticket_info(call: CallbackQuery):
 @bot.message_handler(regexp='Мои тикеты')
 def show_client_tickets(message: Message):
     """Выводим список тикетов клиента"""
-    if db_client.who_is_it(message.chat.id) != 'client':
+    user_id = message.chat.id
+    if db_client.who_is_it(user_id) != 'client':
         start(message)
         return
-    if tickets := db_client.find_tickets():
+    if tickets := db_client.show_tickets(user_id):
         bot.send_message(
-            message.chat.id,
+            user_id,
             messages.MY_TICKETS,
             reply_markup=markups.make_inline_markups_from_dict(
                 {ticket.title: f'ticket_{ticket.get_id()}'
@@ -132,14 +133,23 @@ def get_title(message: Message):
         show_main_menu(message)
         return
 
-    if len(message.text) <= 30:
-        ticket = dict(title=message.text)
+    input_title = message.text
+    client_id = message.chat.id
+    client_tickets = db_client.show_tickets(client_id)
+    ticket_titles = [ticket.title for ticket in client_tickets]
+
+    if input_title in ticket_titles:
+        bot.send_message(client_id, text=messages.TITLE_EXIST)
+        bot.register_next_step_handler(message, get_title)
+        return
+    elif len(input_title) <= 30:
+        ticket = dict(title=input_title)
     else:
-        bot.send_message(message.chat.id, text=messages.TITLE_ERROR)
+        bot.send_message(client_id, text=messages.TITLE_LEN_ERROR)
         bot.register_next_step_handler(message, get_title)
         return
     bot.send_message(
-        message.chat.id,
+        client_id,
         text=messages.INPUT_TICKET_TEXT,
         reply_markup=markups.get_back_main_menu()
     )
@@ -167,16 +177,16 @@ def get_text(message: Message, ticket: dict):
 def delete_ticket(call: CallbackQuery):
     """Удаляем тикет"""
     ticket_id = int(call.data.lstrip('delete_ticket_'))
-    if db_client.delete_ticket(ticket_id):
-        bot.answer_callback_query(call.id, text=messages.TICKET_DELETED)
-        show_client_tickets(call.message)
-
-        ticket = db_client.show_ticket(ticket_id)
-        send_notice(order_id=ticket['order_id'],
-                    notice=messages.DELETED.format(ticket['title']),
-                    sender_id=call.message.chat.id)
+    ticket = db_client.show_ticket(ticket_id)
+    order_id = ticket['order_id']
+    if not order_id:
+        if db_client.delete_ticket(ticket_id):
+            bot.answer_callback_query(call.id, text=messages.TICKET_DELETED)
+            show_client_tickets(call.message)
+        else:
+            bot.answer_callback_query(messages.ERROR_500)
     else:
-        bot.answer_callback_query(messages.ERROR_500)
+        bot.answer_callback_query(call.id, text=messages.CANT_DELETE)
 
 
 #  ********************  Сторона фрилансера  ********************  #

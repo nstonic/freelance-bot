@@ -103,7 +103,7 @@ def show_ticket(ticket_id: int) -> dict:
     """Возвращает информацию по конкретному тикету."""
     ticket = Ticket.get(id=ticket_id)
     serialized_ticket = {
-        'client_id': ticket.client.telegram_id,
+        'client': ticket.client.telegram_id,
         'order_id': get_order_id(ticket),
         'title': ticket.title,
         'created_at': ticket.created_at,
