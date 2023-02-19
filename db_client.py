@@ -56,14 +56,19 @@ def show_order(order_id: int) -> dict:
     """Возвращает информацию по конкретному заказу."""
     order = Order.get(id=order_id)
     serialized_order = {
-        'client_id': order.ticket.client.telegram_id,
+        'ticket_id': order.ticket.id,
+        'client': order.ticket.client.telegram_id,
         'title': order.ticket.title,
         'started_at': order.started_at.strftime("%d/%m/%Y, %H:%M"),
         'text': order.ticket.text,
         'status': order.status,
         'freelancer': order.freelancer.telegram_id,
         'estimate_time': order.estimate_time,
-        'completed_at': order.completed_at
+        'completed_at': [
+            order.completed_at.strftime("%d/%m/%Y, %H:%M")
+            if order.completed_at
+            else None
+        ][0]
     }
     return serialized_order
 
@@ -74,15 +79,16 @@ def show_my_orders(telegram_id: int) -> list:
     return list(freelancer.orders.where(Order.status == 'in_progress'))
 
 
-def start_work(ticket_id: int, telegram_id: int, estimate_time: str) -> bool:
+def start_work(ticket_id: int, telegram_id: int, estimate_time: str) -> int:
     """Фрилансер берет в работу тикет"""
     freelancer = Freelancer.get(telegram_id=telegram_id)
     ticket = Ticket.get(id=ticket_id)
-    Order.create(ticket=ticket,
-                 freelancer=freelancer,
-                 estimate_time=estimate_time
-                 )
-    return True
+    order = Order.create(
+        ticket=ticket,
+        freelancer=freelancer,
+        estimate_time=estimate_time
+    )
+    return order.id
 
 
 def show_tickets(telegram_id: int) -> list:
@@ -133,7 +139,8 @@ def get_ticket_estimate_time(ticket):
 def get_ticket_complited_at(ticket):
     if ticket.orders:
         completed_at = ticket.orders.order_by(Order.started_at.desc()).first().completed_at
-        return completed_at.strftime("%d/%m/%Y, %H:%M")
+        if completed_at:
+            return completed_at.strftime("%d/%m/%Y, %H:%M")
     return None
 
 
