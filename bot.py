@@ -1,5 +1,5 @@
 import os
-from datetime import date
+from datetime import date, datetime
 
 import telebot
 from telebot.types import Message, CallbackQuery
@@ -19,7 +19,7 @@ bot = telebot.TeleBot(os.environ['BOT_TOKEN'], parse_mode=None)
 @bot.message_handler(commands=['start'])
 def start(message: Message):
     """Выводим приветствие и предложение зарегистрироваться"""
-    
+
     if not db_client.who_is_it(message.from_user.id):
         register_markup = markups.make_inline_markups_from_dict(
             {'Заказчик': 'register_client',
@@ -70,6 +70,13 @@ def show_ticket_info(call: CallbackQuery):
     ticket_id = int(call.data.lstrip('ticket_'))
     ticket = db_client.show_ticket(ticket_id)
     ticket['status'] = messages.TICKET_STATUSES[ticket['status']]
+    ticket['created_at'] = ticket['created_at'].replace(microsecond=0)
+    if ticket['estimate_time']:
+        ticket['estimate_time'] = ticket['estimate_time'].replace(microsecond=0)
+    if ticket['completed_at']:
+        ticket['completed_at'] = ticket['completed_at'].replace(microsecond=0)
+
+
     user_role = db_client.who_is_it(call.message.chat.id)
     buttons = {}
     if user_role == 'client':
@@ -166,9 +173,11 @@ def get_text(message: Message, ticket: dict):
     """Получаем от заказчика текст тикета"""
 
     if message.text == 'Назад':
+        # bot.delete_message(message.chat.id, message.id)
         create_new_ticket(message)
         return
     if message.text == 'Основное меню':
+        # bot.delete_message(message.chat.id, message.id)
         show_main_menu(message)
         return
 
@@ -233,6 +242,7 @@ def show_freelancer_orders(message: Message):
                 row_width=1
             )
         )
+        show_main_menu(message)
     else:
         bot.send_message(message.chat.id, messages.NO_ORDERS)
 
@@ -271,9 +281,11 @@ def get_estimate_time(message: Message, call: CallbackQuery, ticket_id: int):
     """Запрашиваем оценочное время исполнения"""
 
     if message.text == 'Назад':
+        # bot.delete_message(message.chat.id, message.id)
         show_freelancer_orders(message)
         return
     if message.text == 'Основное меню':
+        # bot.delete_message(message.chat.id, message.id)
         show_main_menu(message)
         return
 
@@ -335,40 +347,28 @@ def show_chat(call: CallbackQuery):
 
     chat = db_client.show_chat(order_id)
     if chat:
-        compiled_chat = [f'<b>{msg["sending_at"]}:  {msg["user_role"]}</b>\n{msg["text"]}'
+        compiled_chat = [f'{msg["sending_at"].replace(microsecond=0)}:  {msg["user_role"]}\n{msg["text"]}'
                          for msg in chat]
         chat_text = '\n\n'.join(compiled_chat)
     else:
         chat_text = messages.NO_MESSAGES
     bot.send_message(chat_id=user_id,
-                     text=chat_text,
-                     parse_mode='HTML')
-
-    chat_markup = markups.make_menu_from_list(['>   Отмена   <'])
-    bot.send_message(chat_id=user_id,
-                     text=messages.SEND_MESSAGE,
-                     reply_markup=chat_markup)
-    bot.register_next_step_handler(call.message,
-                                   get_chat_message,
-                                   call=call,
-                                   order_id=order_id)
+                     text=f'Предыдущая переписка:\n\n{chat_text}')
+    chat_mode(user_id, order_id, call)
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('answer_order_'))
-def show_chat(call: CallbackQuery):
-    """Принимает ответ в чат"""
-
+def answer(call: CallbackQuery):
+    """Ответ в чат"""
     order_id = int(call.data.lstrip('answer_order_'))
-    bot.register_next_step_handler(call.message,
-                                   get_chat_message,
-                                   call=call,
-                                   order_id=order_id)
+    chat_mode(call.message.chat.id, order_id, call)
 
 
 def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
     """Принимаем сообщение в чат"""
 
-    if message.text == '>   Отмена   <':
+    if message.text == 'Выйти из чата':
+        # bot.delete_message(call.message.chat.id, call.message.id)
         show_main_menu(message)
         return
 
@@ -380,44 +380,48 @@ def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
     bot.answer_callback_query(call.id, messages.MESSAGE_SENT)
 
     notice = f'{messages.INCOMING}\n\n{msg_text}'
-    send_notice(order_id=order_id, notice=notice, sender_id=user_id)
+    send_notice(order_id=order_id, notice=notice, sender_id=user_id, show_answer=True)
+
+    chat_mode(user_id, order_id, call)
+
+
+def chat_mode(user_id: int, order_id: int, call: CallbackQuery):
+    """Функция обеспечивает режим чата."""
+    chat_markup = markups.make_menu_from_list(['Выйти из чата'])
+    bot.send_message(chat_id=user_id,
+                     text=messages.SEND_MESSAGE,
+                     reply_markup=chat_markup)
+    bot.register_next_step_handler(call.message,
+                                   get_chat_message,
+                                   call=call,
+                                   order_id=order_id)
 
 
 def send_notice(order_id: int, notice: str, sender_id: int, show_answer: bool = False):
     """Отправляем оповещение другой стороне"""
 
-    user_role = db_client.who_is_it(sender_id)
-    receiver = {'client': 'freelancer', 'freelancer': 'client'}[user_role]
+    sender_role = db_client.who_is_it(sender_id)
+    receiver_role = {'client': 'freelancer', 'freelancer': 'client'}[sender_role]
     order = db_client.show_order(order_id)
-    receiver_id = order[receiver]
-    order_or_ticket = {'client': 'тикету', 'freelancer': 'заказу'}[receiver]
+    receiver_id = order[receiver_role]
+    order_or_ticket = {'client': 'тикету', 'freelancer': 'заказу'}[receiver_role]
     format_values = dict(
         order_or_ticket=order_or_ticket,
         title=order['title']
     )
 
-    if receiver == 'freelancer':
-        notice_markup = markups.get_notice_buttons(
-            show_answer=show_answer,
-            order_id=order_id
-        )
-        bot.send_message(
-            receiver_id,
-            notice.format(**format_values),
-            parse_mode='HTML',
-            reply_markup=notice_markup
-        )
-    if receiver == 'client':
-        notice_markup = markups.get_notice_buttons(
-            show_answer=show_answer,
-            ticket_id=order['ticket_id']
-        )
-        bot.send_message(
-            receiver_id,
-            notice.format(**format_values),
-            parse_mode='HTML',
-            reply_markup=notice_markup
-        )
+    notice_markup = markups.get_notice_buttons(
+        user_role=receiver_role,
+        show_answer=show_answer,
+        order_id=order_id,
+        ticket_id=order['ticket_id']
+    )
+    bot.send_message(
+        receiver_id,
+        notice.format(**format_values),
+        parse_mode='HTML',
+        reply_markup=notice_markup
+    )
 
 
 if __name__ == '__main__':
