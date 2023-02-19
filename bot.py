@@ -70,6 +70,9 @@ def show_ticket_info(call: CallbackQuery):
     ticket_id = int(call.data.lstrip('ticket_'))
     ticket = db_client.show_ticket(ticket_id)
     ticket['status'] = messages.TICKET_STATUSES[ticket['status']]
+    for property, value in ticket.items():
+        if isinstance(value, datetime):
+            ticket[property] = value.strftime('%Y.%m.%d %H:%M:%S')
 
     user_role = db_client.who_is_it(call.message.chat.id)
     buttons = {}
@@ -120,7 +123,7 @@ def create_new_ticket(message: Message):
         bot.send_message(
             message.chat.id,
             text=messages.INPUT_TITLE,
-            reply_markup=markups.make_menu_from_list(['Создать тикет', 'Мои тикеты'])
+            reply_markup=markups.get_back_main_menu()
         )
         bot.register_next_step_handler(message,
                                        get_title)
@@ -134,7 +137,7 @@ def get_title(message: Message):
     """Получаем от заказчика название тикета"""
 
     if message.text == 'Назад':
-        create_new_ticket(message)
+        show_main_menu(message)
         return
     if message.text == 'Основное меню':
         show_main_menu(message)
@@ -245,6 +248,10 @@ def show_order_info(call: CallbackQuery):
     order_id = int(call.data.lstrip('order_'))
     order = db_client.show_order(order_id)
     order['status'] = messages.ORDER_STATUSES[order['status']]
+    for property, value in order.items():
+        if isinstance(value, datetime):
+            order[property] = value.strftime('%Y.%m.%d')
+
     order_inline_markup = markups.get_order_buttons(order_id)
 
     bot.answer_callback_query(call.id, text='Ваш заказ')
@@ -334,6 +341,21 @@ def show_chat(call: CallbackQuery):
     order_id = int(call.data.lstrip('show_chat_order_'))
     user_id = call.message.chat.id
 
+    chat_markup = markups.make_menu_from_list(['Выйти из чата', 'История чата'])
+    bot.send_message(
+        chat_id=user_id,
+        text=messages.SEND_MESSAGE,
+        reply_markup=chat_markup
+    )
+    bot.register_next_step_handler(
+        call.message,
+        get_chat_message,
+        call=call,
+        order_id=order_id
+    )
+
+
+def get_whole_chat_in_one_msg(order_id: int) -> str:
     chat = db_client.show_chat(order_id)
     if chat:
         compiled_chat = [f'{msg["sending_at"].replace(microsecond=0)}:  {msg["user_role"]}\n{msg["text"]}'
@@ -341,16 +363,26 @@ def show_chat(call: CallbackQuery):
         chat_text = '\n\n'.join(compiled_chat)
     else:
         chat_text = messages.NO_MESSAGES
-    bot.send_message(chat_id=user_id,
-                     text=f'Предыдущая переписка:\n\n{chat_text}')
-    chat_mode(user_id, order_id, call)
+    return f'Предыдущая переписка:\n\n{chat_text}'
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('answer_order_'))
 def answer(call: CallbackQuery):
     """Ответ в чат"""
+    bot.clear_step_handler(call.message)
     order_id = int(call.data.lstrip('answer_order_'))
-    chat_mode(call.message.chat.id, order_id, call)
+    chat_markup = markups.make_menu_from_list(['Выйти из чата', 'История чата'])
+    bot.send_message(
+        chat_id=call.message.chat.id,
+        text=messages.SEND_MESSAGE,
+        reply_markup=chat_markup
+    )
+    bot.register_next_step_handler(
+        call.message,
+        get_chat_message,
+        call=call,
+        order_id=order_id
+    )
 
 
 def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
@@ -359,6 +391,18 @@ def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
     if message.text == 'Выйти из чата':
         bot.clear_step_handler(message)
         show_main_menu(message)
+        return
+    if message.text == 'История чата':
+        bot.send_message(
+            chat_id=call.message.chat.id,
+            text=get_whole_chat_in_one_msg(order_id)
+        )
+        bot.register_next_step_handler(
+            call.message,
+            get_chat_message,
+            call=call,
+            order_id=order_id
+        )
         return
 
     user_id = message.chat.id
@@ -375,16 +419,6 @@ def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
 
     notice = f'{messages.INCOMING}\n\n{msg_text}'
     send_notice(order_id=order_id, notice=notice, sender_id=user_id, show_answer=True)
-
-
-def chat_mode(user_id: int, order_id: int, call: CallbackQuery):
-    """Функция обеспечивает режим чата."""
-    chat_markup = markups.make_menu_from_list(['>  Выйти из чата  <'])
-    bot.send_message(
-        chat_id=user_id,
-        text=messages.SEND_MESSAGE,
-        reply_markup=chat_markup
-    )
     bot.register_next_step_handler(
         call.message,
         get_chat_message,

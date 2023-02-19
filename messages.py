@@ -27,8 +27,7 @@ TICKET_INFO = '<b>{title}</b>\n\n' \
               '<b>Дата создания: </b>{created_at}\n' \
               '<b>Текст: </b>{text}\n' \
               '<b>Статус: </b>{status}\n' \
-              '<b>Планируемое время: </b>{estimate_time}\n' \
-              '<b>Дата закрытия: </b>{completed_at}'
+              '<b>Планируемая дата завершения: </b>{estimate_time}\n'
 TICKET_TAKEN = 'Тикет <b>{}</b> взят в работу'
 TICKET_CLOSED = 'Тикет <b>{}</b> выполнен'
 TICKET_CANCELED = 'Исполнитель отказался от тикета <b>{}</b>'

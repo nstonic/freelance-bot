@@ -31,8 +31,8 @@ def get_order_buttons(order_id: int) -> InlineKeyboardMarkup:
     return order_inline_markup
 
 
-def get_notice_buttons(user_role: str, show_answer: bool, order_id: int,
-                       ticket_id: int) -> InlineKeyboardMarkup:
+def get_notice_buttons(user_role: str, order_id: int,
+                       ticket_id: int, show_answer: bool) -> InlineKeyboardMarkup:
     notice_buttons = InlineKeyboardMarkup(row_width=2)
     open_btn = None
     if user_role == 'client':
