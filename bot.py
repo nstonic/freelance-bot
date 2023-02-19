@@ -316,8 +316,11 @@ def show_chat(call: CallbackQuery):
     """Показываем чат"""
     order_id = int(call.data.lstrip('show_chat_order_'))
     chat = db_client.show_chat(order_id) or messages.NO_MESSAGE
+    compiled_chat = [f'<b>{msg["sending_at"]}:  {msg["user_role"]}</b>\n{msg["text"]}'
+                     for msg in chat]
     bot.send_message(chat_id=call.message.chat.id,
-                     text=chat)
+                     text='\n\n'.join(compiled_chat),
+                     parse_mode='HTML')
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.SEND_MESSAGE,
                      reply_markup=markups.get_back_main_menu())
@@ -341,9 +344,9 @@ def get_chat_message(message: Message,
 
     user_id = message.chat.id
     msg_text = message.text
-    if db_client.get_chat_msg(user_role=db_client.who_is_it(user_id),
-                              message_text=msg_text,
-                              order_id=order_id):
+    if db_client.create_chat_msg(telegram_id=user_id,
+                                 message_text=msg_text,
+                                 order_id=order_id):
         bot.answer_callback_query(call.id, messages.MESSAGE_SEND)
         send_notice(order_id, msg_text, user_id)
     else:
