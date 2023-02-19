@@ -50,8 +50,8 @@ TICKET_STATUSES = {'waiting': 'Ожидает исполнителя',
 
 # Чат
 SEND_MESSAGE = 'Введите сообщение'
-MESSAGE_SEND = 'Сообщение отправлено'
-NO_MESSAGE = 'В чате нет сообщений'
+MESSAGE_SENT = 'Сообщение отправлено'
+NO_MESSAGES = 'В чате нет сообщений'
 INCOMING = 'Вам пришло новое сообщение по {order_or_ticket} <b>{title}</b>'
 
 #  Сообщения об ошибках
