@@ -70,12 +70,11 @@ def show_ticket_info(call: CallbackQuery):
     ticket_id = int(call.data.lstrip('ticket_'))
     ticket = db_client.show_ticket(ticket_id)
     ticket['status'] = messages.TICKET_STATUSES[ticket['status']]
-    ticket['created_at'] = ticket['created_at'].replace(microsecond=0)
-    if ticket['estimate_time']:
-        ticket['estimate_time'] = ticket['estimate_time'].replace(microsecond=0)
-    if ticket['completed_at']:
-        ticket['completed_at'] = ticket['completed_at'].replace(microsecond=0)
-
+    # ticket['created_at'] = ticket['created_at'].replace(microsecond=0)
+    # if ticket['estimate_time']:
+    #     ticket['estimate_time'] = ticket['estimate_time'].replace(microsecond=0)
+    # if ticket['completed_at']:
+    #     ticket['completed_at'] = ticket['completed_at'].replace(microsecond=0)
 
     user_role = db_client.who_is_it(call.message.chat.id)
     buttons = {}
@@ -195,8 +194,7 @@ def delete_ticket(call: CallbackQuery):
 
     ticket_id = int(call.data.lstrip('delete_ticket_'))
     ticket = db_client.show_ticket(ticket_id)
-    order_id = ticket['order_id']
-    if not order_id:
+    if ticket['status'] == 'waiting':
         if db_client.delete_ticket(ticket_id):
             bot.answer_callback_query(call.id, text=messages.TICKET_DELETED)
             show_client_tickets(call.message)
@@ -368,33 +366,40 @@ def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
     """Принимаем сообщение в чат"""
 
     if message.text == 'Выйти из чата':
-        # bot.delete_message(call.message.chat.id, call.message.id)
+        bot.clear_step_handler(message)
         show_main_menu(message)
         return
 
     user_id = message.chat.id
     msg_text = message.text
-    db_client.create_chat_msg(telegram_id=user_id,
-                              message_text=msg_text,
-                              order_id=order_id)
-    bot.answer_callback_query(call.id, messages.MESSAGE_SENT)
+    db_client.create_chat_msg(
+        telegram_id=user_id,
+        message_text=msg_text,
+        order_id=order_id
+    )
+    try:
+        bot.answer_callback_query(call.id, messages.MESSAGE_SENT)
+    except telebot.apihelper.ApiTelegramException:
+        pass
 
     notice = f'{messages.INCOMING}\n\n{msg_text}'
     send_notice(order_id=order_id, notice=notice, sender_id=user_id, show_answer=True)
 
-    chat_mode(user_id, order_id, call)
-
 
 def chat_mode(user_id: int, order_id: int, call: CallbackQuery):
     """Функция обеспечивает режим чата."""
-    chat_markup = markups.make_menu_from_list(['Выйти из чата'])
-    bot.send_message(chat_id=user_id,
-                     text=messages.SEND_MESSAGE,
-                     reply_markup=chat_markup)
-    bot.register_next_step_handler(call.message,
-                                   get_chat_message,
-                                   call=call,
-                                   order_id=order_id)
+    chat_markup = markups.make_menu_from_list(['>  Выйти из чата  <'])
+    bot.send_message(
+        chat_id=user_id,
+        text=messages.SEND_MESSAGE,
+        reply_markup=chat_markup
+    )
+    bot.register_next_step_handler(
+        call.message,
+        get_chat_message,
+        call=call,
+        order_id=order_id
+    )
 
 
 def send_notice(order_id: int, notice: str, sender_id: int, show_answer: bool = False):
