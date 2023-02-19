@@ -3,7 +3,7 @@ import datetime
 from peewee import IntegrityError
 from peewee import fn, JOIN
 
-from models import Client, Freelancer, Ticket, Order
+from models import Client, Freelancer, Ticket, Order, Message
 
 
 def who_is_it(telegram_id: int) -> str:
@@ -103,7 +103,7 @@ def show_ticket(ticket_id: int) -> dict:
     """Возвращает информацию по конкретному тикету."""
     ticket = Ticket.get(id=ticket_id)
     serialized_ticket = {
-        'client_id': ticket.client.telegram_id,
+        'client': ticket.client.telegram_id,
         'order_id': get_order_id(ticket),
         'title': ticket.title,
         'created_at': ticket.created_at,
@@ -165,12 +165,26 @@ def cancel_order(order_id) -> bool:
     order.save()
     return True
 
+#  ********************  Чат  ********************  #
 
-def show_chat(order_id) -> str:
+
+def show_chat(order_id) -> list:
     """Возвращает переписку по данному ордеру."""
-    pass
+    order = Order.get(id=order_id)
+    messages = []
+    for message in order.messages.order_by(Message.sending_at):
+        serialized_message = {
+            'user_role': message.user_role,
+            'text': message.text,
+            'sending_at': message.sending_at
+        }
+        messages.append(serialized_message)
+    return messages
 
 
-def get_chat_msg(order_id: int, user_role: str, message_text: str) -> bool:
+def create_chat_msg(order_id: int, telegram_id: int, message_text: str) -> bool:
     """Записываем сообщение в чат"""
-    pass
+    order = Order.get(id=order_id)
+    user_role = who_is_it(telegram_id)
+    Message.create(order=order, user_role=user_role, text=message_text)
+    return True
