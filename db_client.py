@@ -1,3 +1,5 @@
+import datetime
+
 from peewee import IntegrityError
 from peewee import fn, JOIN
 
@@ -59,16 +61,12 @@ def show_order(order_id: int) -> dict:
         'ticket_id': order.ticket.id,
         'client': order.ticket.client.telegram_id,
         'title': order.ticket.title,
-        'started_at': order.started_at.strftime("%d/%m/%Y, %H:%M"),
+        'started_at': order.started_at,
         'text': order.ticket.text,
         'status': order.status,
         'freelancer': order.freelancer.telegram_id,
         'estimate_time': order.estimate_time,
-        'completed_at': [
-            order.completed_at.strftime("%d/%m/%Y, %H:%M")
-            if order.completed_at
-            else None
-        ][0]
+        'completed_at': order.completed_at
     }
     return serialized_order
 
@@ -108,7 +106,7 @@ def show_ticket(ticket_id: int) -> dict:
         'client_id': ticket.client.telegram_id,
         'order_id': get_order_id(ticket),
         'title': ticket.title,
-        'created_at': ticket.created_at.strftime("%d/%m/%Y, %H:%M"),
+        'created_at': ticket.created_at,
         'text': ticket.text,
         'status': get_ticket_status(ticket),
         'freelancer': get_ticket_freelancer(ticket),
@@ -120,7 +118,9 @@ def show_ticket(ticket_id: int) -> dict:
 
 def get_ticket_status(ticket):
     if ticket.orders:
-        return ticket.orders.order_by(Order.started_at.desc()).first().status
+        status = ticket.orders.order_by(Order.started_at.desc()).first().status
+        if status != 'cancelled':
+            return status
     return 'waiting'
 
 
@@ -138,9 +138,7 @@ def get_ticket_estimate_time(ticket):
 
 def get_ticket_complited_at(ticket):
     if ticket.orders:
-        completed_at = ticket.orders.order_by(Order.started_at.desc()).first().completed_at
-        if completed_at:
-            return completed_at.strftime("%d/%m/%Y, %H:%M")
+        return ticket.orders.order_by(Order.started_at.desc()).first().completed_at
     return None
 
 
@@ -152,12 +150,20 @@ def get_order_id(ticket):
 
 def close_order(order_id) -> bool:
     """Исполнитель закрывает заказ (ставим статус finished)"""
-    pass
+    order = Order.get(id=order_id)
+    order.status = 'finished'
+    order.completed_at = datetime.datetime.now()
+    order.save()
+    return True
 
 
 def cancel_order(order_id) -> bool:
-    """Исполнитель отказывается от заказа (ставим статус waiting)"""
-    pass
+    """Исполнитель отказывается от заказа (ставим статус cancelled)"""
+    order = Order.get(id=order_id)
+    order.status = 'cancelled'
+    order.completed_at = datetime.datetime.now()
+    order.save()
+    return True
 
 
 def show_chat(order_id) -> str:
