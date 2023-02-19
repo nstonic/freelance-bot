@@ -50,7 +50,7 @@ class Order(BaseModel):
 
 class Message(BaseModel):
     order = ForeignKeyField(Order, backref='messages', on_delete='CASCADE')
-    telegram_id = CharField()
+    user_role = CharField()
     text = TextField()
     sending_at = DateTimeField(default=datetime.datetime.now)
 
