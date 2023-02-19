@@ -70,11 +70,6 @@ def show_ticket_info(call: CallbackQuery):
     ticket_id = int(call.data.lstrip('ticket_'))
     ticket = db_client.show_ticket(ticket_id)
     ticket['status'] = messages.TICKET_STATUSES[ticket['status']]
-    # ticket['created_at'] = ticket['created_at'].replace(microsecond=0)
-    # if ticket['estimate_time']:
-    #     ticket['estimate_time'] = ticket['estimate_time'].replace(microsecond=0)
-    # if ticket['completed_at']:
-    #     ticket['completed_at'] = ticket['completed_at'].replace(microsecond=0)
 
     user_role = db_client.who_is_it(call.message.chat.id)
     buttons = {}
@@ -172,11 +167,9 @@ def get_text(message: Message, ticket: dict):
     """Получаем от заказчика текст тикета"""
 
     if message.text == 'Назад':
-        # bot.delete_message(message.chat.id, message.id)
         create_new_ticket(message)
         return
     if message.text == 'Основное меню':
-        # bot.delete_message(message.chat.id, message.id)
         show_main_menu(message)
         return
 
@@ -279,11 +272,9 @@ def get_estimate_time(message: Message, call: CallbackQuery, ticket_id: int):
     """Запрашиваем оценочное время исполнения"""
 
     if message.text == 'Назад':
-        # bot.delete_message(message.chat.id, message.id)
         show_freelancer_orders(message)
         return
     if message.text == 'Основное меню':
-        # bot.delete_message(message.chat.id, message.id)
         show_main_menu(message)
         return
 
