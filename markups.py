@@ -28,5 +28,20 @@ def get_order_buttons(order_id: int) -> types.InlineKeyboardMarkup:
     return order_inline_markup
 
 
+def get_notice_buttons(show_answer: bool, order_id: int = None, ticket_id: int = None) -> types.InlineKeyboardMarkup:
+    notice_buttons = types.InlineKeyboardMarkup(row_width=2)
+    open_btn = None
+    if ticket_id:
+        open_btn = types.InlineKeyboardButton(text='Открыть тикет', callback_data=f'ticket_{ticket_id}')
+    if order_id:
+        open_btn = types.InlineKeyboardButton(text='Открыть заказ', callback_data=f'order_{order_id}')
+    if show_answer:
+        answer_btn = types.InlineKeyboardButton(text='Ответить', callback_data=f'answer_order_{order_id}')
+    else:
+        answer_btn = None
+    notice_buttons.add(answer_btn, open_btn)
+    return notice_buttons
+
+
 def get_back_main_menu() -> types.ReplyKeyboardMarkup:
     return make_menu_from_list(['Назад', 'Основное меню'])

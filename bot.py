@@ -19,6 +19,7 @@ bot = telebot.TeleBot(os.environ['BOT_TOKEN'], parse_mode=None)
 @bot.message_handler(commands=['start'])
 def start(message: Message):
     """Выводим приветствие и предложение зарегистрироваться"""
+    
     if not db_client.who_is_it(message.from_user.id):
         register_markup = markups.make_inline_markups_from_dict(
             {'Заказчик': 'register_client',
@@ -35,6 +36,7 @@ def start(message: Message):
 @bot.message_handler(commands=['main_menu'])
 def show_main_menu(message: Message):
     """Выводим основное меню"""
+
     user_role = db_client.who_is_it(message.chat.id)
     if user_role == 'client':
         text = 'Меню заказчика'
@@ -64,6 +66,7 @@ def register_user(call: CallbackQuery):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
 def show_ticket_info(call: CallbackQuery):
     """Отображаем информацию по тикету"""
+
     ticket_id = int(call.data.lstrip('ticket_'))
     ticket = db_client.show_ticket(ticket_id)
     ticket['status'] = messages.TICKET_STATUSES[ticket['status']]
@@ -87,7 +90,8 @@ def show_ticket_info(call: CallbackQuery):
 
 @bot.message_handler(regexp='Мои тикеты')
 def show_client_tickets(message: Message):
-    """Выводим список тикетов клиента"""
+    """Выводим список тикетов заказчика"""
+
     user_id = message.chat.id
     if db_client.who_is_it(user_id) != 'client':
         start(message)
@@ -109,6 +113,7 @@ def show_client_tickets(message: Message):
 @bot.message_handler(regexp='Создать тикет')
 def create_new_ticket(message: Message):
     """Создаем новый тикет"""
+
     user = db_client.who_is_it(message.from_user.id)
     if user == 'client':
         bot.send_message(
@@ -125,7 +130,8 @@ def create_new_ticket(message: Message):
 
 
 def get_title(message: Message):
-    """Получаем от клиента название тикета"""
+    """Получаем от заказчика название тикета"""
+
     if message.text == 'Назад':
         create_new_ticket(message)
         return
@@ -157,7 +163,8 @@ def get_title(message: Message):
 
 
 def get_text(message: Message, ticket: dict):
-    """Получаем от клиента текст тикета"""
+    """Получаем от заказчика текст тикета"""
+
     if message.text == 'Назад':
         create_new_ticket(message)
         return
@@ -176,6 +183,7 @@ def get_text(message: Message, ticket: dict):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('delete_ticket_'))
 def delete_ticket(call: CallbackQuery):
     """Удаляем тикет"""
+
     ticket_id = int(call.data.lstrip('delete_ticket_'))
     ticket = db_client.show_ticket(ticket_id)
     order_id = ticket['order_id']
@@ -193,7 +201,8 @@ def delete_ticket(call: CallbackQuery):
 
 @bot.message_handler(regexp='Найти заказ')
 def find_tickets(message: Message):
-    """Выводим список 5 случайных свободных заказов"""
+    """Выводим список 5 случайных свободных тикетов"""
+
     user = db_client.who_is_it(message.from_user.id)
     if user == 'freelancer':
         tickets = db_client.find_tickets()
@@ -213,6 +222,7 @@ def find_tickets(message: Message):
 @bot.message_handler(regexp='Заказы в работе')
 def show_freelancer_orders(message: Message):
     """Выводим список заказов фрилансера"""
+
     if orders := db_client.show_my_orders(message.chat.id):
         bot.send_message(
             message.chat.id,
@@ -230,6 +240,7 @@ def show_freelancer_orders(message: Message):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
 def show_order_info(call: CallbackQuery):
     """Отображаем информацию по заказу"""
+
     order_id = int(call.data.lstrip('order_'))
     order = db_client.show_order(order_id)
     order['status'] = messages.ORDER_STATUSES[order['status']]
@@ -244,7 +255,8 @@ def show_order_info(call: CallbackQuery):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('take_ticket_'))
 def take_ticket(call: CallbackQuery):
-    """Фрилансер берет тикет в работу"""
+    """Исполнитель берет тикет в работу"""
+
     ticket_id = int(call.data.lstrip('take_ticket_'))
     bot.register_next_step_handler(call.message,
                                    get_estimate_time,
@@ -255,10 +267,9 @@ def take_ticket(call: CallbackQuery):
                      reply_markup=markups.get_back_main_menu())
 
 
-def get_estimate_time(message: Message,
-                      call: CallbackQuery,
-                      ticket_id: int):
+def get_estimate_time(message: Message, call: CallbackQuery, ticket_id: int):
     """Запрашиваем оценочное время исполнения"""
+
     if message.text == 'Назад':
         show_freelancer_orders(message)
         return
@@ -285,6 +296,8 @@ def get_estimate_time(message: Message,
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('close_order_'))
 def close_order(call: CallbackQuery):
+    """Исполнитель закрывает заказ"""
+
     order_id = int(call.data.lstrip('close_order_'))
     order = db_client.show_order(order_id)
     if db_client.close_order(order_id):
@@ -298,6 +311,8 @@ def close_order(call: CallbackQuery):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('cancel_order_'))
 def cancel_order(call: CallbackQuery):
+    """Исполнитель отказывается от заказа"""
+
     order_id = int(call.data.lstrip('cancel_order_'))
     order = db_client.show_order(order_id)
     if db_client.cancel_order(order_id):
@@ -314,56 +329,63 @@ def cancel_order(call: CallbackQuery):
 @bot.callback_query_handler(func=lambda call: call.data.startswith('show_chat_order_'))
 def show_chat(call: CallbackQuery):
     """Показываем чат"""
+
     order_id = int(call.data.lstrip('show_chat_order_'))
+    user_id = call.message.chat.id
+
     chat = db_client.show_chat(order_id)
     if chat:
         compiled_chat = [f'<b>{msg["sending_at"]}:  {msg["user_role"]}</b>\n{msg["text"]}'
                          for msg in chat]
-        msg_text = '\n\n'.join(compiled_chat)
+        chat_text = '\n\n'.join(compiled_chat)
     else:
-        msg_text = messages.NO_MESSAGE
-    bot.send_message(chat_id=call.message.chat.id,
-                     text=msg_text,
+        chat_text = messages.NO_MESSAGES
+    bot.send_message(chat_id=user_id,
+                     text=chat_text,
                      parse_mode='HTML')
-    bot.send_message(chat_id=call.message.chat.id,
+
+    chat_markup = markups.make_menu_from_list(['>   Отмена   <'])
+    bot.send_message(chat_id=user_id,
                      text=messages.SEND_MESSAGE,
-                     reply_markup=markups.get_back_main_menu())
+                     reply_markup=chat_markup)
     bot.register_next_step_handler(call.message,
                                    get_chat_message,
                                    call=call,
                                    order_id=order_id)
 
 
-def get_chat_message(message: Message,
-                     call: CallbackQuery,
-                     order_id: int):
+@bot.callback_query_handler(func=lambda call: call.data.startswith('answer_order_'))
+def show_chat(call: CallbackQuery):
+    """Принимает ответ в чат"""
+
+    order_id = int(call.data.lstrip('answer_order_'))
+    bot.register_next_step_handler(call.message,
+                                   get_chat_message,
+                                   call=call,
+                                   order_id=order_id)
+
+
+def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
     """Принимаем сообщение в чат"""
-    if message.text == 'Назад':
-        call.data = call.data.lstrip('show_chat_')
-        show_order_info(call)
-        return
-    if message.text == 'Основное меню':
+
+    if message.text == '>   Отмена   <':
         show_main_menu(message)
         return
 
     user_id = message.chat.id
     msg_text = message.text
-    if db_client.create_chat_msg(telegram_id=user_id,
-                                 message_text=msg_text,
-                                 order_id=order_id):
-        bot.answer_callback_query(call.id, messages.MESSAGE_SEND)
-        send_notice(order_id, msg_text, user_id)
-    else:
-        bot.answer_callback_query(call.id, messages.ERROR_500)
-        call.data = call.data.lstrip('show_chat_')
-        show_order_info(call)
+    db_client.create_chat_msg(telegram_id=user_id,
+                              message_text=msg_text,
+                              order_id=order_id)
+    bot.answer_callback_query(call.id, messages.MESSAGE_SENT)
 
     notice = f'{messages.INCOMING}\n\n{msg_text}'
     send_notice(order_id=order_id, notice=notice, sender_id=user_id)
 
 
-def send_notice(order_id: int, notice: str, sender_id: int):
-    """Пересылаем сообщение другой стороне"""
+def send_notice(order_id: int, notice: str, sender_id: int, show_answer: bool = False):
+    """Отправляем оповещение другой стороне"""
+
     user_role = db_client.who_is_it(sender_id)
     receiver = {'client': 'freelancer', 'freelancer': 'client'}[user_role]
     order = db_client.show_order(order_id)
@@ -373,18 +395,29 @@ def send_notice(order_id: int, notice: str, sender_id: int):
         order_or_ticket=order_or_ticket,
         title=order['title']
     )
+
+    if receiver == 'freelancer':
+        notice_markup = markups.get_notice_buttons(
+            show_answer=show_answer,
+            order_id=order_id
+        )
+        bot.send_message(
+            receiver_id,
+            notice.format(**format_values),
+            parse_mode='HTML',
+            reply_markup=notice_markup
+        )
     if receiver == 'client':
-        chat_markup = markups.make_inline_markups_from_dict(
-            {f'Открыть тикет': f'ticket_{order["ticket_id"]}'}
+        notice_markup = markups.get_notice_buttons(
+            show_answer=show_answer,
+            ticket_id=order['ticket_id']
         )
-    else:
-        chat_markup = markups.make_inline_markups_from_dict(
-            {f'Открыть заказ': f'order_{order_id}'}
+        bot.send_message(
+            receiver_id,
+            notice.format(**format_values),
+            parse_mode='HTML',
+            reply_markup=notice_markup
         )
-    bot.send_message(receiver_id,
-                     notice.format(**format_values),
-                     parse_mode='HTML',
-                     reply_markup=chat_markup)
 
 
 if __name__ == '__main__':
