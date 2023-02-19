@@ -339,18 +339,20 @@ def get_chat_message(message: Message,
         show_main_menu(message)
         return
 
-    if db_client.get_chat_msg(user_role=db_client.who_is_it(message.chat.id),
-                              message_text=message.text,
+    user_id = message.chat.id
+    msg_text = message.text
+    if db_client.get_chat_msg(user_role=db_client.who_is_it(user_id),
+                              message_text=msg_text,
                               order_id=order_id):
         bot.answer_callback_query(call.id, messages.MESSAGE_SEND)
-        send_notice(order_id, message)
+        send_notice(order_id, msg_text, user_id)
     else:
         bot.answer_callback_query(call.id, messages.ERROR_500)
         call.data = call.data.lstrip('show_chat_')
         show_order_info(call)
 
-    notice = f'{messages.INCOMING}\n\n{message.text}'
-    send_notice(order_id=order_id, notice=notice, sender_id=message.chat.id)
+    notice = f'{messages.INCOMING}\n\n{msg_text}'
+    send_notice(order_id=order_id, notice=notice, sender_id=user_id)
 
 
 def send_notice(order_id: int, notice: str, sender_id: int):
