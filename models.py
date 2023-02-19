@@ -43,7 +43,7 @@ class Ticket(BaseModel):
 class Order(BaseModel):
     ticket = ForeignKeyField(Ticket, backref='orders', on_delete='CASCADE')
     freelancer = ForeignKeyField(Freelancer, backref='orders', on_delete='CASCADE')
-    estimate_time = CharField(max_length=100)
+    estimate_time = DateField(null=True)
     started_at = DateTimeField(default=datetime.datetime.now)
     completed_at = DateTimeField(null=True)
     status = CharField(max_length=100, default='in_progress')
