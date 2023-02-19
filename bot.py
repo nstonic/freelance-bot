@@ -315,11 +315,15 @@ def cancel_order(call: CallbackQuery):
 def show_chat(call: CallbackQuery):
     """Показываем чат"""
     order_id = int(call.data.lstrip('show_chat_order_'))
-    chat = db_client.show_chat(order_id) or messages.NO_MESSAGE
-    compiled_chat = [f'<b>{msg["sending_at"]}:  {msg["user_role"]}</b>\n{msg["text"]}'
-                     for msg in chat]
+    chat = db_client.show_chat(order_id)
+    if chat:
+        compiled_chat = [f'<b>{msg["sending_at"]}:  {msg["user_role"]}</b>\n{msg["text"]}'
+                         for msg in chat]
+        msg_text = '\n\n'.join(compiled_chat)
+    else:
+        msg_text = messages.NO_MESSAGE
     bot.send_message(chat_id=call.message.chat.id,
-                     text='\n\n'.join(compiled_chat),
+                     text=msg_text,
                      parse_mode='HTML')
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.SEND_MESSAGE,
