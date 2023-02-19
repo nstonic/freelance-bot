@@ -37,6 +37,7 @@ class Ticket(BaseModel):
     text = TextField()
     rate = DecimalField(default=5000.0)
     created_at = DateTimeField(default=datetime.datetime.now)
+    status = CharField(max_length=100, default='waiting')
 
 
 class Order(BaseModel):

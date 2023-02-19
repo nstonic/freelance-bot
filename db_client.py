@@ -38,8 +38,7 @@ def create_ticket(telegram_id: int, title: str, text: str, rate=5000.0) -> bool:
 def find_tickets() -> list:
     """Возвращает список из 5 случайных открытых тикетов (это для фрилансера)."""
     free_random_tickets = Ticket.select() \
-        .join(Order, JOIN.LEFT_OUTER) \
-        .where((Order.status == None) | (Order.status == 'cancelled')) \
+        .where(Ticket.status == 'waiting') \
         .order_by(fn.Random()) \
         .limit(5)
     return list(free_random_tickets)
@@ -86,6 +85,8 @@ def start_work(ticket_id: int, telegram_id: int, estimate_time: str) -> int:
         freelancer=freelancer,
         estimate_time=estimate_time
     )
+    ticket.status = 'in_progress'
+    ticket.save()
     return order.id
 
 
@@ -93,9 +94,7 @@ def show_tickets(telegram_id: int) -> list:
     """Возвращает список всех незакрытых тикетов заказчика."""
     uncomplited_tickets = Client.get(telegram_id=telegram_id) \
         .tickets \
-        .select(Ticket, Order) \
-        .join(Order, JOIN.LEFT_OUTER) \
-        .where((Order.status == None) | (Order.status != 'finished'))
+        .where(Ticket.status != 'finished')
     return list(uncomplited_tickets)
 
 
@@ -108,20 +107,12 @@ def show_ticket(ticket_id: int) -> dict:
         'title': ticket.title,
         'created_at': ticket.created_at,
         'text': ticket.text,
-        'status': get_ticket_status(ticket),
+        'status': ticket.status,
         'freelancer': get_ticket_freelancer(ticket),
         'estimate_time': get_ticket_estimate_time(ticket),
         'completed_at': get_ticket_complited_at(ticket)
     }
     return serialized_ticket
-
-
-def get_ticket_status(ticket):
-    if ticket.orders:
-        status = ticket.orders.order_by(Order.started_at.desc()).first().status
-        if status != 'cancelled':
-            return status
-    return 'waiting'
 
 
 def get_ticket_freelancer(ticket):
@@ -154,6 +145,9 @@ def close_order(order_id) -> bool:
     order.status = 'finished'
     order.completed_at = datetime.datetime.now()
     order.save()
+    ticket = order.ticket
+    ticket.status = 'finished'
+    ticket.save()
     return True
 
 
@@ -163,6 +157,9 @@ def cancel_order(order_id) -> bool:
     order.status = 'cancelled'
     order.completed_at = datetime.datetime.now()
     order.save()
+    ticket = order.ticket
+    ticket.status = 'waiting'
+    ticket.save()
     return True
 
 #  ********************  Чат  ********************  #
