@@ -79,9 +79,11 @@ def show_ticket_info(call: CallbackQuery):
     user_role = db_client.who_is_it(call.message.chat.id)
     buttons = {}
     if user_role == 'client':
-        buttons['Удалить тикет'] = f'delete_ticket_{ticket_id}'
-        if ticket['status'] != messages.TICKET_STATUSES['waiting']:
+        if ticket['status'] == messages.TICKET_STATUSES['waiting']:
+            buttons['Удалить тикет'] = f'delete_ticket_{ticket_id}'
+        else:
             buttons['Чат'] = f'show_chat_order_{ticket["order_id"]}'
+
     if user_role == 'freelancer':
         buttons = {'Взять в работу': f'take_ticket_{ticket_id}'}
 
