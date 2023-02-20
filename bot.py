@@ -370,32 +370,11 @@ def compile_whole_chat_in_one_msg(order_id: int) -> str:
     roles = {'client': 'Заказчик', 'freelancer': 'Исполнитель'}
     if chat:
         compiled_messages = [f'{msg["sending_at"].replace(microsecond=0)}:  {roles[msg["user_role"]]}\n{msg["text"]}'
-                         for msg in chat]
+                             for msg in chat]
         chat_text = '\n\n'.join(compiled_messages)
     else:
         chat_text = messages.NO_MESSAGES
     return f'История чата по заказу "{order["title"]}":\n\n{chat_text}'
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith('answer_order_'))
-def answer(call: CallbackQuery):
-    """Ответ в чат"""
-
-    order_id = int(call.data.lstrip('answer_order_'))
-
-    bot.clear_step_handler(call.message)
-    chat_markup = markups.make_menu_from_list(['Выйти из чата', 'История чата'])
-    bot.send_message(
-        chat_id=call.message.chat.id,
-        text=messages.SEND_MESSAGE,
-        reply_markup=chat_markup
-    )
-    bot.register_next_step_handler(
-        call.message,
-        get_chat_message,
-        call=call,
-        order_id=order_id
-    )
 
 
 def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
@@ -433,7 +412,7 @@ def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
 
     bot.clear_step_handler(call.message)
     notice = f'{messages.INCOMING}\n\n{msg_text}'
-    send_notice(order_id=order_id, notice=notice, sender_id=user_id, show_answer=True)
+    send_notice(order_id=order_id, notice=notice, sender_id=user_id)
     bot.register_next_step_handler(
         call.message,
         get_chat_message,
@@ -442,7 +421,7 @@ def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
     )
 
 
-def send_notice(order_id: int, notice: str, sender_id: int, show_answer: bool = False):
+def send_notice(order_id: int, notice: str, sender_id: int):
     """Отправляем оповещение другой стороне"""
 
     sender_role = db_client.who_is_it(sender_id)
@@ -457,7 +436,6 @@ def send_notice(order_id: int, notice: str, sender_id: int, show_answer: bool = 
 
     notice_markup = markups.get_notice_buttons(
         user_role=receiver_role,
-        show_answer=show_answer,
         order_id=order_id,
         ticket_id=order['ticket_id']
     )

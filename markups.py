@@ -32,18 +32,12 @@ def get_order_buttons(order_id: int) -> InlineKeyboardMarkup:
 
 
 def get_notice_buttons(user_role: str, order_id: int,
-                       ticket_id: int, show_answer: bool) -> InlineKeyboardMarkup:
+                       ticket_id: int) -> InlineKeyboardMarkup:
     notice_buttons = InlineKeyboardMarkup(row_width=2)
-    open_btn = None
     if user_role == 'client':
-        open_btn = InlineKeyboardButton(text='Открыть тикет', callback_data=f'ticket_{ticket_id}')
+        notice_buttons.add(InlineKeyboardButton(text='Открыть тикет', callback_data=f'ticket_{ticket_id}'))
     if user_role == 'freelancer':
-        open_btn = InlineKeyboardButton(text='Открыть заказ', callback_data=f'order_{order_id}')
-    if show_answer:
-        answer_btn = InlineKeyboardButton(text='Ответить', callback_data=f'answer_order_{order_id}')
-        notice_buttons.add(answer_btn, open_btn)
-    else:
-        notice_buttons.add(open_btn)
+        notice_buttons.add(InlineKeyboardButton(text='Открыть заказ', callback_data=f'order_{order_id}'))
     return notice_buttons
 
 
