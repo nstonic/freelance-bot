@@ -39,10 +39,10 @@ def show_main_menu(message: Message):
 
     user_role = db_client.who_is_it(message.chat.id)
     if user_role == 'client':
-        text = 'Меню заказчика'
+        text = 'Основное меню'
         markup = markups.make_menu_from_list(['Создать тикет', 'Мои тикеты'])
     elif user_role == 'freelancer':
-        text = 'Меню исполнителя'
+        text = 'Основное меню'
         markup = markups.make_menu_from_list(['Найти заказ', 'Заказы в работе'])
     else:
         text = messages.MENU_IS_NOT_ALLOWED
@@ -79,13 +79,16 @@ def show_ticket_info(call: CallbackQuery):
     user_role = db_client.who_is_it(call.message.chat.id)
     buttons = {}
     if user_role == 'client':
-        buttons['Удалить тикет'] = f'delete_ticket_{ticket_id}'
-        if ticket['status'] != messages.TICKET_STATUSES['waiting']:
+        if ticket['status'] == messages.TICKET_STATUSES['waiting']:
+            buttons['Удалить тикет'] = f'delete_ticket_{ticket_id}'
+        else:
             buttons['Чат'] = f'show_chat_order_{ticket["order_id"]}'
+
     if user_role == 'freelancer':
         buttons = {'Взять в работу': f'take_ticket_{ticket_id}'}
 
     ticket_inline_markup = markups.make_inline_markups_from_dict(buttons)
+    bot.answer_callback_query(call.id, text=messages.TICKET.format(ticket['status']))
     bot.send_message(chat_id=call.message.chat.id,
                      text=messages.TICKET_INFO.format(**ticket),
                      reply_markup=ticket_inline_markup,
@@ -192,7 +195,7 @@ def delete_ticket(call: CallbackQuery):
 
     ticket_id = int(call.data.lstrip('delete_ticket_'))
     ticket = db_client.show_ticket(ticket_id)
-    if ticket['status'] == 'waiting':
+    if not ticket['order_id']:
         if db_client.delete_ticket(ticket_id):
             bot.answer_callback_query(call.id, text=messages.TICKET_DELETED)
             show_client_tickets(call.message)
@@ -346,6 +349,7 @@ def show_chat(call: CallbackQuery):
     order_id = int(call.data.lstrip('show_chat_order_'))
     user_id = call.message.chat.id
 
+    bot.clear_step_handler(call.message)
     chat_markup = markups.make_menu_from_list(['Выйти из чата', 'История чата'])
     bot.send_message(
         chat_id=user_id,
@@ -360,23 +364,26 @@ def show_chat(call: CallbackQuery):
     )
 
 
-def get_whole_chat_in_one_msg(order_id: int) -> str:
+def compile_whole_chat_in_one_msg(order_id: int) -> str:
     order = db_client.show_order(order_id)
     chat = db_client.show_chat(order_id)
+    roles = {'client': 'Заказчик', 'freelancer': 'Исполнитель'}
     if chat:
-        compiled_chat = [f'{msg["sending_at"].replace(microsecond=0)}:  {msg["user_role"]}\n{msg["text"]}'
+        compiled_messages = [f'{msg["sending_at"].replace(microsecond=0)}:  {roles[msg["user_role"]]}\n{msg["text"]}'
                          for msg in chat]
-        chat_text = '\n\n'.join(compiled_chat)
+        chat_text = '\n\n'.join(compiled_messages)
     else:
         chat_text = messages.NO_MESSAGES
-    return f'Предыдущая переписка по заказу "{order["title"]}":\n\n{chat_text}'
+    return f'История чата по заказу "{order["title"]}":\n\n{chat_text}'
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('answer_order_'))
 def answer(call: CallbackQuery):
     """Ответ в чат"""
-    bot.clear_step_handler(call.message)
+
     order_id = int(call.data.lstrip('answer_order_'))
+
+    bot.clear_step_handler(call.message)
     chat_markup = markups.make_menu_from_list(['Выйти из чата', 'История чата'])
     bot.send_message(
         chat_id=call.message.chat.id,
@@ -399,9 +406,10 @@ def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
         show_main_menu(message)
         return
     if message.text == 'История чата':
+        bot.clear_step_handler(call.message)
         bot.send_message(
             chat_id=call.message.chat.id,
-            text=get_whole_chat_in_one_msg(order_id)
+            text=compile_whole_chat_in_one_msg(order_id)
         )
         bot.register_next_step_handler(
             call.message,
@@ -423,6 +431,7 @@ def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
     except telebot.apihelper.ApiTelegramException:
         pass
 
+    bot.clear_step_handler(call.message)
     notice = f'{messages.INCOMING}\n\n{msg_text}'
     send_notice(order_id=order_id, notice=notice, sender_id=user_id, show_answer=True)
     bot.register_next_step_handler(
