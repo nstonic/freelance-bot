@@ -293,10 +293,17 @@ def get_estimate_time(message: Message, call: CallbackQuery, ticket_id: int):
 
     chat_id = message.chat.id
     message_text = message.text
+    wrong_date = False
     if re.fullmatch(r'(0[1-9]|[12][0-9]|3[01])[- /.](0[1-9]|1[012])[- /.](19|20)\d\d', message_text):
         splited_date = tuple(re.split(r'-|/|\.| ', message_text))
-        est_date = datetime.date(*map(int, splited_date[::-1]))
+        try:
+            est_date = datetime.date(*map(int, splited_date[::-1]))
+        except ValueError:
+            wrong_date = True
     else:
+        wrong_date = True
+
+    if wrong_date:
         bot.send_message(chat_id, messages.INVALID_DATE)
         take_ticket(call)
         return
@@ -306,13 +313,17 @@ def get_estimate_time(message: Message, call: CallbackQuery, ticket_id: int):
         take_ticket(call)
         return
 
-    order_id = db_client.start_work(ticket_id=ticket_id,
-                                    telegram_id=chat_id,
-                                    estimate_time=est_date)
+    order_id = db_client.start_work(
+        ticket_id=ticket_id,
+        telegram_id=chat_id,
+        estimate_time=est_date
+    )
     order = db_client.show_order(order_id)
-    send_notice(order_id=order_id,
-                notice=messages.TICKET_TAKEN.format(order['title']),
-                sender_id=chat_id)
+    send_notice(
+        order_id=order_id,
+        notice=messages.TICKET_TAKEN.format(order['title']),
+        sender_id=chat_id
+    )
     show_freelancer_orders(message)
 
 
