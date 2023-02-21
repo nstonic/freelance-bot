@@ -27,7 +27,7 @@ def get_order_buttons(order_id: int) -> InlineKeyboardMarkup:
     close_btn = InlineKeyboardButton(text='Завершить', callback_data=f'close_order_{order_id}')
     cancel_btn = InlineKeyboardButton(text='Отказаться', callback_data=f'cancel_order_{order_id}')
     order_inline_markup.add(close_btn, cancel_btn)
-    order_inline_markup.add(InlineKeyboardButton(text='Чат', callback_data=f'show_chat_order_{order_id}'))
+    order_inline_markup.add(InlineKeyboardButton(text='Чат', callback_data=f'start_chat_order_{order_id}'))
     return order_inline_markup
 
 

@@ -1,4 +1,6 @@
+import datetime
 import os
+import re
 from datetime import date
 
 import telebot
@@ -18,7 +20,7 @@ bot = telebot.TeleBot(os.environ['BOT_TOKEN'], parse_mode=None)
 
 @bot.message_handler(commands=['start'])
 def start(message: Message):
-    """Выводим приветствие и предложение зарегистрироваться"""
+    """Выводит предложение зарегистрироваться"""
 
     if not db_client.who_is_it(message.from_user.id):
         register_markup = markups.make_inline_markups_from_dict(
@@ -35,7 +37,7 @@ def start(message: Message):
 @bot.message_handler(regexp='Основное меню')
 @bot.message_handler(commands=['main_menu'])
 def show_main_menu(message: Message):
-    """Выводим основное меню"""
+    """Выводит основное меню"""
 
     user_role = db_client.who_is_it(message.chat.id)
     if user_role == 'client':
@@ -54,7 +56,7 @@ def show_main_menu(message: Message):
 
 @bot.callback_query_handler(func=lambda call: call.data in ['register_client', 'register_freelancer'])
 def register_user(call: CallbackQuery):
-    """Регистрируем пользователя в базе"""
+    """Регистрирует пользователя в базе"""
 
     if db_client.register_user(call.from_user.id, role=call.data.lstrip('register_')):
         bot.answer_callback_query(call.id, text=messages.REGISTER_OK)
@@ -65,10 +67,11 @@ def register_user(call: CallbackQuery):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('ticket_'))
 def show_ticket_info(call: CallbackQuery):
-    """Отображаем информацию по тикету"""
+    """Отображает информацию по тикету"""
 
     ticket_id = int(call.data.lstrip('ticket_'))
     ticket = db_client.show_ticket(ticket_id)
+
     ticket['status'] = messages.TICKET_STATUSES[ticket['status']]
     ticket['created_at'] = ticket['created_at'].strftime('%Y.%m.%d %H:%M:%S')
     if ticket['estimate_time']:
@@ -82,7 +85,7 @@ def show_ticket_info(call: CallbackQuery):
         if ticket['status'] == messages.TICKET_STATUSES['waiting']:
             buttons['Удалить тикет'] = f'delete_ticket_{ticket_id}'
         else:
-            buttons['Чат'] = f'show_chat_order_{ticket["order_id"]}'
+            buttons['Чат'] = f'start_chat_order_{ticket["order_id"]}'
 
     if user_role == 'freelancer':
         buttons = {'Взять в работу': f'take_ticket_{ticket_id}'}
@@ -99,7 +102,7 @@ def show_ticket_info(call: CallbackQuery):
 
 @bot.message_handler(regexp='Мои тикеты')
 def show_client_tickets(message: Message):
-    """Выводим список тикетов заказчика"""
+    """Выводит список тикетов заказчика"""
 
     user_id = message.chat.id
     if db_client.who_is_it(user_id) != 'client':
@@ -121,7 +124,7 @@ def show_client_tickets(message: Message):
 
 @bot.message_handler(regexp='Создать тикет')
 def create_new_ticket(message: Message):
-    """Создаем новый тикет"""
+    """Создаёт новый тикет"""
 
     user = db_client.who_is_it(message.from_user.id)
     if user == 'client':
@@ -139,7 +142,7 @@ def create_new_ticket(message: Message):
 
 
 def get_title(message: Message):
-    """Получаем от заказчика название тикета"""
+    """Принимает от заказчика название тикета"""
 
     if message.text == 'Назад':
         show_main_menu(message)
@@ -172,7 +175,7 @@ def get_title(message: Message):
 
 
 def get_text(message: Message, ticket: dict):
-    """Получаем от заказчика текст тикета"""
+    """Принимает от заказчика текст тикета"""
 
     if message.text == 'Назад':
         create_new_ticket(message)
@@ -191,7 +194,7 @@ def get_text(message: Message, ticket: dict):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('delete_ticket_'))
 def delete_ticket(call: CallbackQuery):
-    """Удаляем тикет"""
+    """Удаляет тикет"""
 
     ticket_id = int(call.data.lstrip('delete_ticket_'))
     ticket = db_client.show_ticket(ticket_id)
@@ -209,7 +212,7 @@ def delete_ticket(call: CallbackQuery):
 
 @bot.message_handler(regexp='Найти заказ')
 def find_tickets(message: Message):
-    """Выводим список 5 случайных свободных тикетов"""
+    """Выводит список 5 случайных свободных тикетов"""
 
     user = db_client.who_is_it(message.from_user.id)
     if user == 'freelancer':
@@ -229,7 +232,7 @@ def find_tickets(message: Message):
 
 @bot.message_handler(regexp='Заказы в работе')
 def show_freelancer_orders(message: Message):
-    """Выводим список заказов фрилансера"""
+    """Выводит список активных заказов фрилансера"""
 
     if orders := db_client.show_my_orders(message.chat.id):
         bot.send_message(
@@ -247,7 +250,7 @@ def show_freelancer_orders(message: Message):
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('order_'))
 def show_order_info(call: CallbackQuery):
-    """Отображаем информацию по заказу"""
+    """Отображает информацию по заказу"""
 
     order_id = int(call.data.lstrip('order_'))
     order = db_client.show_order(order_id)
@@ -279,7 +282,7 @@ def take_ticket(call: CallbackQuery):
 
 
 def get_estimate_time(message: Message, call: CallbackQuery, ticket_id: int):
-    """Запрашиваем оценочное время исполнения"""
+    """Принимает оценочное время исполнения заказа"""
 
     if message.text == 'Назад':
         show_freelancer_orders(message)
@@ -288,25 +291,28 @@ def get_estimate_time(message: Message, call: CallbackQuery, ticket_id: int):
         show_main_menu(message)
         return
 
-    try:
-        est_time = date.fromisoformat(message.text)
-    except ValueError:
-        bot.send_message(message.chat.id, messages.INVALID_DATE)
+    chat_id = message.chat.id
+    message_text = message.text
+    if re.fullmatch(r'(0[1-9]|[12][0-9]|3[01])[- /.](0[1-9]|1[012])[- /.](19|20)\d\d', message_text):
+        splited_date = tuple(re.split(r'-|/|\.| ', message_text))
+        est_date = datetime.date(*map(int, splited_date[::-1]))
+    else:
+        bot.send_message(chat_id, messages.INVALID_DATE)
         take_ticket(call)
         return
 
-    if est_time < date.today():
-        bot.send_message(message.chat.id, messages.WRONG_DATE)
+    if est_date < date.today():
+        bot.send_message(chat_id, messages.WRONG_DATE)
         take_ticket(call)
         return
 
     order_id = db_client.start_work(ticket_id=ticket_id,
-                                    telegram_id=message.chat.id,
-                                    estimate_time=est_time)
+                                    telegram_id=chat_id,
+                                    estimate_time=est_date)
     order = db_client.show_order(order_id)
     send_notice(order_id=order_id,
                 notice=messages.TICKET_TAKEN.format(order['title']),
-                sender_id=message.chat.id)
+                sender_id=chat_id)
     show_freelancer_orders(message)
 
 
@@ -342,31 +348,85 @@ def cancel_order(call: CallbackQuery):
 
 #  ********************  Чат  ********************  #
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('show_chat_order_'))
-def show_chat(call: CallbackQuery):
-    """Показываем чат"""
-
-    order_id = int(call.data.lstrip('show_chat_order_'))
-    user_id = call.message.chat.id
+@bot.callback_query_handler(func=lambda call: call.data.startswith('start_chat_order_'))
+def go_to_chat_mode(call: CallbackQuery):
+    """Переводит бота в режим чата между сторонами заказа."""
 
     bot.clear_step_handler(call.message)
     chat_markup = markups.make_menu_from_list(['Выйти из чата', 'История чата'])
     bot.send_message(
-        chat_id=user_id,
+        chat_id=call.message.chat.id,
         text=messages.SEND_MESSAGE,
         reply_markup=chat_markup
     )
     bot.register_next_step_handler(
         call.message,
-        get_chat_message,
-        call=call,
+        send_message_to_chat,
+        order_id=int(call.data.lstrip('start_chat_order_'))
+    )
+
+
+def send_message_to_chat(message: Message, order_id: int):
+    """Принимает сообщение от пользователя, записывает его в историю чата
+     и отправляет уведомление собеседнику"""
+
+    if message.text == 'Выйти из чата':
+        bot.clear_step_handler(message)
+        show_main_menu(message)
+        return
+    if message.text == 'История чата':
+        show_chat_history(message, order_id)
+        return
+
+    user_id = message.chat.id
+    msg_text = message.text
+
+    db_client.create_chat_msg(
+        telegram_id=user_id,
+        message_text=msg_text,
+        order_id=order_id
+    )
+
+    bot.clear_step_handler(message)
+    notice = f'{messages.INCOMING}\n\n{msg_text}'
+    send_notice(order_id=order_id, notice=notice, sender_id=user_id)
+    bot.register_next_step_handler(
+        message,
+        send_message_to_chat,
         order_id=order_id
     )
 
 
-def compile_whole_chat_in_one_msg(order_id: int) -> str:
+def show_chat_history(message: Message, order_id: int):
+    """Показывает пользователю историю чата по данному заказу"""
     order = db_client.show_order(order_id)
     chat = db_client.show_chat(order_id)
+    bot.clear_step_handler(message)
+    bot.send_message(
+        chat_id=message.chat.id,
+        text=compile_whole_chat_in_one_msg(order['title'], chat)
+    )
+    bot.register_next_step_handler(
+        message,
+        send_message_to_chat,
+        order_id=order_id
+    )
+
+
+def compile_whole_chat_in_one_msg(order_title: str, chat: list[dict]) -> str:
+    """Компилирует весь чат по данному заказу в одно сообщение, форматированное в следующем виде:
+
+        История чата по заказу "Название заказа":
+
+        YYYY-MM-DD HH:MM:SS:  [Роль пользователя]
+        [текст сообщения]
+
+        YYYY-MM-DD HH:MM:SS:  [Роль пользователя]
+        [текст сообщения]
+
+        и т.д.
+    """
+
     roles = {'client': 'Заказчик', 'freelancer': 'Исполнитель'}
     if chat:
         compiled_messages = [f'{msg["sending_at"].replace(microsecond=0)}:  {roles[msg["user_role"]]}\n{msg["text"]}'
@@ -374,51 +434,7 @@ def compile_whole_chat_in_one_msg(order_id: int) -> str:
         chat_text = '\n\n'.join(compiled_messages)
     else:
         chat_text = messages.NO_MESSAGES
-    return f'История чата по заказу "{order["title"]}":\n\n{chat_text}'
-
-
-def get_chat_message(message: Message, call: CallbackQuery, order_id: int):
-    """Принимаем сообщение в чат"""
-
-    if message.text == 'Выйти из чата':
-        bot.clear_step_handler(message)
-        show_main_menu(message)
-        return
-    if message.text == 'История чата':
-        bot.clear_step_handler(call.message)
-        bot.send_message(
-            chat_id=call.message.chat.id,
-            text=compile_whole_chat_in_one_msg(order_id)
-        )
-        bot.register_next_step_handler(
-            call.message,
-            get_chat_message,
-            call=call,
-            order_id=order_id
-        )
-        return
-
-    user_id = message.chat.id
-    msg_text = message.text
-    db_client.create_chat_msg(
-        telegram_id=user_id,
-        message_text=msg_text,
-        order_id=order_id
-    )
-    try:
-        bot.answer_callback_query(call.id, messages.MESSAGE_SENT)
-    except telebot.apihelper.ApiTelegramException:
-        pass
-
-    bot.clear_step_handler(call.message)
-    notice = f'{messages.INCOMING}\n\n{msg_text}'
-    send_notice(order_id=order_id, notice=notice, sender_id=user_id)
-    bot.register_next_step_handler(
-        call.message,
-        get_chat_message,
-        call=call,
-        order_id=order_id
-    )
+    return f'История чата по заказу "{order_title}":\n\n{chat_text}'
 
 
 def send_notice(order_id: int, notice: str, sender_id: int):
