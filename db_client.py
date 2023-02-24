@@ -13,7 +13,6 @@ def who_is_it(telegram_id: int) -> str:
         return 'client'
     elif Freelancer.get_or_none(telegram_id=telegram_id):
         return 'freelancer'
-    return None
 
 
 def register_user(telegram_id: int, role: str) -> bool:
@@ -118,25 +117,21 @@ def show_ticket(ticket_id: int) -> dict:
 def get_ticket_freelancer(ticket):
     if ticket.orders:
         return ticket.orders.order_by(Order.started_at.desc()).first().freelancer.telegram_id
-    return None
 
 
 def get_ticket_estimate_time(ticket):
     if ticket.orders:
         return ticket.orders.order_by(Order.started_at.desc()).first().estimate_time
-    return None
 
 
 def get_ticket_complited_at(ticket):
     if ticket.orders:
         return ticket.orders.order_by(Order.started_at.desc()).first().completed_at
-    return None
 
 
 def get_order_id(ticket):
     if ticket.orders:
         return ticket.orders.order_by(Order.started_at.desc()).first().id
-    return None
 
 
 def close_order(order_id) -> bool:
